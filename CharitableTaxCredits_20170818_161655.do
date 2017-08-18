@@ -235,7 +235,7 @@ if "`makedata'"=="yes" {
 	sort state fisyr nteecc 
 	collapse (sum) cont-compens nonprofits, by(state fisyr)
 	****Save State Aggregate File****
-	cd "`datadir'"
+	cd "`output'"
 	save NCCS_state_year, replace	
 }
 
