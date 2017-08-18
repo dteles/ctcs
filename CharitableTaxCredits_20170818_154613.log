@@ -1,0 +1,406 @@
+------------------------------------------------------------------------------------------------------------------------
+      name:  <unnamed>
+       log:  D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\dofiles\CharitableTaxCredits_20170818_154613.log
+  log type:  text
+ opened on:  18 Aug 2017, 15:46:13
+.         pwd
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\dofiles
+.         display "$S_DATE $S_TIME"
+18 Aug 2017 15:46:13
+. }
+
+. di "-------------------------"
+-------------------------
+
+. di "`c(username)' `c(current_date)'"
+dteles 18 Aug 2017
+
+. di "`c(current_time)'"
+15:46:13
+
+. di "-------------------------"
+-------------------------
+
+. **************************************************
+. * Locals to define which sections to run
+. **************************************************
+. local makedata  "yes" // runs CTC_makedata.do which creates datasets
+
+.         *locals within makedata.do:
+.         local mergeNCCS="yes"
+
+.         
+. /*
+> local sumstats="no"
+> local training="no"
+> local SCM="no"
+> local placebo="no"
+> local inf="no"
+> local tables="no"
+> local graphs="no"
+> local DID="no"
+> local regtables="no"
+> */
+. **************************************************
+. * Net Installs ensure all programs are loaded
+. **************************************************
+. /* right now, we don't need these
+> ssc install sutex
+> ssc install estout, replace
+> ssc install mat2txt
+> net install outtable, from("http://fmwww.bc.edu/RePEc/bocode/o/") replace
+> ssc install egenmore, replace
+> ssc install spmap, replace
+> ssc install corrtex
+> ssc install avar, replace
+> ssc install weakiv, replace
+> ssc install ivreg2, replace
+> ssc install xtivreg2, replace
+> ssc install ranktest, replace
+> ssc install synth, replace
+> ssc install matsave
+> ssc install labutil, replace
+> ssc install carryforward, replace
+> ssc install unique, replace
+> */
+. 
+. **************************************************
+. * Create Datasets
+. **************************************************
+. if "`makedata'"=="yes" {
+.         **************************
+.         *Create 1989-2009 temp files
+.         **************************
+.         foreach num of numlist 1989/2009 {
+  2.                 cd "`datadir'\NCCSextracts"
+  3.                 use CorePC`num', replace
+  4.                 if `num'==1990 {
+  5.                         *keep variables of interest
+.                         keep ein fisyr name-zip5 cont dues invinc totrev solicit ass_boy-liab_eoy fundfees compens
+  6.                         gen progrev=0  // generate program revenue variable
+  7.                 }
+  8.                 if `num'==2008 | `num'==2009 {
+  9.                         keep ein fisyr name-zip5 cont progrev dues invinc totrev solicit ass_boy-liab_eoy fundfees 
+> direxp rentexp compens
+ 10.                         ***Edit Fundraising Expenses for consistancy after change in 990 Form
+.                         replace solicit=fundfees+direxp if fundfees+direxp>solicit & fundfees!=. & direxp!=.
+ 11.                         replace solicit=fundfees+direxp if solicit==0 | solicit==.
+ 12.                 }                       
+ 13.                 if `num'!=1990 & `num'!=2008 & `num'!=2009 {
+ 14.                         keep ein fisyr name-zip5 cont progrev dues invinc totrev solicit ass_boy-liab_eoy fundfees 
+> rentexp compens
+ 15.                 }
+ 16.                 *Edit Program Revenue Variable for consistancy in measurement across years**
+.                 replace progrev=progrev+dues
+ 17.                 drop dues       
+ 18.                 *destring for help with merge and sort.
+.                 destring ein fisyr , replace force
+ 19.                 recast long ein
+ 20.                 *generate a variable for which version the data came from
+.                 gen yr_filed = `num'
+ 21.                 *save temp file*
+.                 cd "`datadir'\temp"
+ 22.                 save CorePC`num'_temp, replace
+ 23.         }
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+(33,921 real changes made)
+ein: all characters numeric; replaced as long
+fisyr: all characters numeric; replaced as int
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+(note: file CorePC1989_temp.dta not found)
+file CorePC1989_temp.dta saved
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+(35,857 real changes made)
+ein: all characters numeric; replaced as long
+fisyr: all characters numeric; replaced as int
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+(note: file CorePC1990_temp.dta not found)
+file CorePC1990_temp.dta saved
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+(35,313 real changes made)
+ein: all characters numeric; replaced as long
+fisyr: all characters numeric; replaced as int
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+(note: file CorePC1991_temp.dta not found)
+file CorePC1991_temp.dta saved
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+(37,283 real changes made)
+ein: all characters numeric; replaced as long
+fisyr: all characters numeric; replaced as int
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+(note: file CorePC1992_temp.dta not found)
+file CorePC1992_temp.dta saved
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+(38,847 real changes made)
+ein: all characters numeric; replaced as long
+fisyr: all characters numeric; replaced as int
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+(note: file CorePC1993_temp.dta not found)
+file CorePC1993_temp.dta saved
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+(40,774 real changes made)
+ein: all characters numeric; replaced as long
+fisyr: all characters numeric; replaced as int
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+(note: file CorePC1994_temp.dta not found)
+file CorePC1994_temp.dta saved
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+(45,734 real changes made)
+ein: all characters numeric; replaced as long
+fisyr: all characters numeric; replaced as int
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+(note: file CorePC1995_temp.dta not found)
+file CorePC1995_temp.dta saved
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+(48,225 real changes made)
+ein: all characters numeric; replaced as long
+fisyr: all characters numeric; replaced as int
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+(note: file CorePC1996_temp.dta not found)
+file CorePC1996_temp.dta saved
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+(52,415 real changes made)
+ein: all characters numeric; replaced as long
+fisyr: all characters numeric; replaced as int
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+(note: file CorePC1997_temp.dta not found)
+file CorePC1997_temp.dta saved
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+(54,141 real changes made)
+ein: all characters numeric; replaced as long
+fisyr: all characters numeric; replaced as int
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+(note: file CorePC1998_temp.dta not found)
+file CorePC1998_temp.dta saved
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+(58,975 real changes made)
+ein: all characters numeric; replaced as long
+fisyr: all characters numeric; replaced as int
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+(note: file CorePC1999_temp.dta not found)
+file CorePC1999_temp.dta saved
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+(58,996 real changes made)
+ein: contains nonnumeric characters; replaced as long
+(1 missing value generated)
+fisyr: all characters numeric; replaced as int
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+(note: file CorePC2000_temp.dta not found)
+file CorePC2000_temp.dta saved
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+(61,328 real changes made)
+ein: contains nonnumeric characters; replaced as long
+(1 missing value generated)
+fisyr: all characters numeric; replaced as int
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+(note: file CorePC2001_temp.dta not found)
+file CorePC2001_temp.dta saved
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+(64,081 real changes made)
+ein: contains nonnumeric characters; replaced as long
+(1 missing value generated)
+fisyr: all characters numeric; replaced as int
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+(note: file CorePC2002_temp.dta not found)
+file CorePC2002_temp.dta saved
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+(66,439 real changes made)
+ein: all characters numeric; replaced as long
+fisyr: all characters numeric; replaced as int
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+(note: file CorePC2003_temp.dta not found)
+file CorePC2003_temp.dta saved
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+(69,000 real changes made)
+ein: all characters numeric; replaced as long
+fisyr: all characters numeric; replaced as int
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+(note: file CorePC2004_temp.dta not found)
+file CorePC2004_temp.dta saved
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+(71,209 real changes made)
+ein: all characters numeric; replaced as long
+fisyr: all characters numeric; replaced as int
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+(note: file CorePC2005_temp.dta not found)
+file CorePC2005_temp.dta saved
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+(73,465 real changes made)
+ein: all characters numeric; replaced as long
+fisyr: all characters numeric; replaced as int
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+(note: file CorePC2006_temp.dta not found)
+file CorePC2006_temp.dta saved
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+(76,511 real changes made)
+ein: all characters numeric; replaced as long
+fisyr: all characters numeric; replaced as int
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+(note: file CorePC2007_temp.dta not found)
+file CorePC2007_temp.dta saved
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+(92,216 real changes made)
+(10 real changes made)
+(41,854 real changes made)
+ein: all characters numeric; replaced as long
+fisyr: all characters numeric; replaced as int
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+(note: file CorePC2008_temp.dta not found)
+file CorePC2008_temp.dta saved
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+(108,597 real changes made)
+(26 real changes made)
+(6,225 real changes made)
+ein: all characters numeric; replaced as long
+fisyr: all characters numeric; replaced as int
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+(note: file CorePC2009_temp.dta not found)
+file CorePC2009_temp.dta saved
+.         **************************
+.         *Create 2010 temp file
+.         **************************
+.         cd "`datadir'\NCCSextracts"
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+.         use CorePC2010, replace
+.         keep ein fisyr name-zip5 cont progrev dues invinc totrev solicit ass_boy-liab_eoy fundfees direxp rentexp comp
+> ens
+.         *Edit Program Revenue Variable for consistancy in measurement across years**
+.         replace progrev=progrev+dues
+(46,524 real changes made)
+.         drop dues
+.         *Edit Fundraising Expenses for consistancy after change in 990 Form
+.         replace solicit=fundfees+direxp if fundfees+direxp>solicit & fundfees!=. & direxp!=.
+(111,663 real changes made)
+.         replace solicit=fundfees+direxp if solicit==0 | solicit==.
+(49 real changes made)
+.         *destring for help with merge and sort.
+.         destring ein fisyr , replace
+ein: all characters numeric; replaced as long
+fisyr: all characters numeric; replaced as int
+.         recast long ein
+.         *generate a variable for which version the data came from
+.         gen yr_filed = 2010
+.         cd "`datadir'\temp"
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+.         save CorePC2010_temp, replace
+(note: file CorePC2010_temp.dta not found)
+file CorePC2010_temp.dta saved
+.         **************************
+.         *Create 2011 temp file
+.         **************************
+.         cd "`datadir'\NCCSextracts"
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+.         use CorePC2011, replace
+.         keep ein fisyr name-zip5 cont progrev invinc totrev ass_boy-liab_eoy fundfees lessdirf lessdirg rentexp compen
+> s
+.         ***Edit Fundraising Expenses for consistancy after change in 990 Form
+.         gen solicit=fundfees+lessdirf+lessdirg
+(188,833 missing values generated)
+.         ****destring for help with merge and sort.
+.         destring ein fisyr , replace
+ein: all characters numeric; replaced as long
+fisyr: all characters numeric; replaced as int
+.         recast long ein
+.         ****generate a variable for which version the data came from
+.         gen yr_filed = 2011
+.         cd "`datadir'\temp"
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+.         save CorePC2011_temp, replace
+(note: file CorePC2011_temp.dta not found)
+file CorePC2011_temp.dta saved
+.         *******************************************
+.         *Create 2012 and 2013 temp files
+.         *******************************************
+.         foreach num of numlist 2012/2013 {
+  2.                 cd "`datadir'\NCCSextracts"     
+  3.                 use CorePC`num', replace
+  4.                 keep ein fisyr name-zip5 cont progrev invinc totrev ass_boy-liab_eoy lessdirf fundfees lessdirf les
+> sdirg rentexp compens
+  5.                         ***Edit Fundraising Expenses for consistancy after change in 990 Form
+.                         gen solicit=fundfees+lessdirf+lessdirg  
+  6.                         ****destring for help with merge and sort.
+.                         destring ein fisyr , replace
+  7.                         recast long ein
+  8.                         ****generate a variable for which version the data came from
+.                         gen yr_filed = 2012
+  9.                 ***Save 2012temp file***
+.                 cd "`datadir'\temp"
+ 10.                 save CorePC`num'_temp, replace
+ 11.         }
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+(178,940 missing values generated)
+ein: all characters numeric; replaced as long
+fisyr: all characters numeric; replaced as int
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+(note: file CorePC2012_temp.dta not found)
+file CorePC2012_temp.dta saved
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+(165,335 missing values generated)
+ein: all characters numeric; replaced as long
+fisyr: all characters numeric; replaced as int
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+(note: file CorePC2013_temp.dta not found)
+file CorePC2013_temp.dta saved
+.         *********************************************
+.         *Merge Temp files into a Master file
+.         *********************************************
+.         use CorePC1989_temp, replace
+.         foreach num of numlist 1990/2013 {
+  2.                 cd "`datadir'\temp"
+  3.                 append using CorePC`num'_temp
+  4.         }
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+.         **remove duplicates*****
+.         ***first, if duplicate entries exist within the same fiscal year and filing year, take the larger values of fi
+> nancial variables
+.         sort ein fisyr yr_filed
+.         order ein fisyr yr_filed
+.         collapse  (first) name-zip5 (max) cont-compens, by(ein fisyr yr_filed)
+.         ***second treat duplicates from filings in seperate years as ammended files.
+.         sort ein fisyr yr_filed /*sorts by year filed*/
+.         by ein fisyr: gen N=_N
+.         by ein fisyr: gen n=_n
+.         count
+  6,574,458
+.         **Keeps only the last filing***
+.         keep if N==n
+(978,189 observations deleted)
+.         count
+  5,596,269
+.         ***Save Combined Project File**********
+.         cd "`datadir'"
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data
+.         save CombinedNCCS, replace
+(note: file CombinedNCCS.dta not found)
+file CombinedNCCS.dta saved
+. }
+
+. 
+. 
+. // Close the log, end the file
+. macro drop _all
+
+. capture log close
