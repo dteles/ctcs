@@ -17,7 +17,8 @@ local project="CharitableTaxCredits"
 * Locals to define which sections to run
 **************************************************
 local mergeNCCS="no"
-local statefiles="yes"
+local statefiles="no"
+local CF="yes"
 **************************************************
 * Save Time-stamped copy of this .do file
 **************************************************
@@ -186,4 +187,15 @@ if "`statefiles'"=="yes" {
 	****Save State Aggregate File****
 	cd "`datadir'"
 	save NCCS_state_year, replace	
+}
+************************************************
+*********Community Foundations File********************
+*************************************************
+if "`CF'"=="yes" {
+	clear all
+	cd "`datadir'"
+	use CombinedNCCS
+	keep if nteecc=="T31"
+	sort ein fisyr
+	save NCCS_foundations, replace
 }

@@ -28,7 +28,7 @@ local project="CharitableTaxCredits"
 * Locals to define which sections to run
 **************************************************
 local makedata "yes" 
-local Iowa "no"
+local Iowa "yes"
 local Arizona "no"
 **************************************************
 * Define Directory
@@ -37,8 +37,8 @@ cd "`projectdir'\ctcs_dofiles"
 **************************************************
 * Create Log File
 **************************************************
-global logthis "yes" 	//change to "no" if no log file is desired
-global makecopy "yes"   //change to "no" if copies of do files are desired
+global logthis "no" 	//change to "no" if no log file is desired
+global makecopy "no"   //change to "no" if copies of do files are desired
 local time : di %tcCCYYNNDD!_HHMMSS clock("`c(current_date)'`c(current_time)'","DMYhms")
 if "$makecopy"=="yes"{
 	copy `project'.do "`project'_`time'.do"
@@ -79,9 +79,13 @@ ssc install unique, replace
 **************************************************
 * Create Datasets
 **************************************************
-
-do CTC_makedata.do
-
+cd "`projectdir'\ctcs_dofiles"
+if "`makedata'"=="yes" do CTC_makedata.do
+**************************************************
+* Analysis of Endow Iowa Tax Credit
+**************************************************
+cd "`projectdir'\ctcs_dofiles"
+if "`Iowa'"=="yes" do CTC_IA.do
 
 
 **************************************************
