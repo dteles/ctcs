@@ -10,6 +10,7 @@
 * Directories
 **************************************************
 local projectdir="D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits"
+local controldir "D:\Users\dteles\Box Sync\DTeles\MyControls"
 local datadir="`projectdir'\data"
 local output="`projectdir'\output"
 local project="CharitableTaxCredits"
@@ -18,7 +19,14 @@ local project="CharitableTaxCredits"
 **************************************************
 local mergeNCCS="no"
 local statefiles="no"
-local CF="yes"
+local makecntrl="no"
+local CF="no"
+local subsector="yes"
+**************************************************
+* Locals to define which subsets to create
+**************************************************
+local BIG `" "ALL" "PUB" "ST" "'
+local CFSPILL `" "ALLmCF" "PUBmCF" "STmCF" "'
 **************************************************
 * Save Time-stamped copy of this .do file
 **************************************************
@@ -131,11 +139,11 @@ if "`mergeNCCS'"=="yes" {
 	by ein fisyr: gen N=_N
 	by ein fisyr: gen n=_n
 	count
-	**Keeps only the last filing***
+	* Keeps only the last filing***
 	keep if N==n
 	drop N n
 	count
-	*clean string data
+	* clean string data
 	foreach var of varlist name state city {
 		replace `var'=upper(`var')
 		replace `var' = subinstr(`var', "&", " AND ",.)
@@ -151,7 +159,20 @@ if "`mergeNCCS'"=="yes" {
 		drop `var'2
 		replace `var'=trim(`var')
 		replace `var'=trim(`var')
-	}	
+	}
+	* carryforward state if it is missing
+	sort ein fisyr
+	bysort ein (fisyr): carryforward state if state=="", replace
+	bysort ein (fisyr): carryforward state if state=="", replace
+	bysort ein (fisyr): carryforward state if state=="", replace
+	gsort ein - fisyr
+	bysort ein (fisyr): carryforward state if state=="", replace 
+	bysort ein (fisyr): carryforward state if state=="", replace
+	di "Checking to make sure no state identifiers are missing"
+	di "Number missing:"
+	count if state==""
+	sort ein fisyr	
+	drop if state==""
 	***Save Combined Project File**********
 	cd "`datadir'"
 	save CombinedNCCS, replace
@@ -175,9 +196,26 @@ if "`statefiles'"=="yes" {
 		by ein : carryforward state if state=="", replace 
 		by ein: carryforward state if state=="", replace
 		count if state==""
+	* Create "MAJOR" classification
+	gen MAJOR=.
+	replace MAJOR = 1 if ntee1=="A"
+	replace MAJOR = 2 if ntee1=="B"
+	replace MAJOR = 3 if ntee1=="C" | ntee1=="D"
+	foreach letter in E F G H  {
+		replace MAJOR=4 if ntee1=="`letter'"
+	}
+	foreach letter in I J K L M N O P {
+		replace MAJOR=5 if ntee1=="`letter'"
+	}
+	foreach letter in R S T U V W {
+		replace MAJOR=6 if ntee1=="`letter'"
+	}
+	replace MAJOR=7 if ntee1=="X"
+	replace MAJOR=8 if ntee1=="Y"
+	replace MAJOR=10 if ntee1=="Z"
 	***Collapse to State by NCCS by Year	
 	sort state nteecc ein fisyr
-	collapse (sum) cont-compens nonprofits, by(state nteecc fisyr)
+	collapse (sum) cont-compens nonprofits, by(state nteecc fisyr)	
 	****Save State-by-NTEECC File****
 	cd "`datadir'"
 	save NCCS_ntee_state_year, replace	
@@ -189,13 +227,171 @@ if "`statefiles'"=="yes" {
 	save NCCS_state_year, replace	
 }
 ************************************************
-*********Community Foundations File********************
-*************************************************
+* Community Foundations Files
+************************************************
 if "`CF'"=="yes" {
 	clear all
 	cd "`datadir'"
 	use CombinedNCCS
+	**Gen Number Variable
+	gen nonprofits=1
+	preserve
+	* keep only community foundations
 	keep if nteecc=="T31"
 	sort ein fisyr
 	save NCCS_foundations, replace
+	restore
+	* drop only community foundations // used for spillover estimates
+	drop if nteecc=="T31"
+	save NCCS_mCF, replace
 }
+************************************************
+* State-by-year Controls Files
+************************************************
+if "`makecntrl'"=="yes" {
+	* Load census government finance data
+	cd "`controldir'\Census\governments"
+	use CensusStateGov
+	* keep State and Local Aggregate
+	keep if gov_lvl==1
+	drop gov_lvl
+	sum year
+	* Merge in SEER Population data
+	cd "`controldir'\SEER_population"
+	merge 1:1 FIPS year using SEERpopulation_state
+	keep if _merge==3
+	drop _merge	
+	sum year
+	* Merge in BEA personal Income data
+	cd "`controldir'\BEA"
+	merge 1:1 FIPS year using BEA_PersonalIncome_state
+	keep if _merge==3
+	drop _merge
+	sum year
+	*drop BEA population in favor of SEER population
+	drop POP 
+	* merge in Frank Ineqaulity data
+	rename year Year
+	drop State
+	rename GeoName State
+	cd "`controldir'\Frank_inequality"
+	merge 1:1 State Year using Frank_WTID_2013
+	drop st // Frank state code
+	keep if _merge==3
+	drop _merge
+	merge 1:1 State Year using Frank_Gini_2013
+	drop st // Frank state code	
+	keep if _merge==3
+	drop _merge
+	rename Year year
+	sum year
+	* merge in unemployment data
+	cd "`controldir'\BLS"
+	merge 1:1 FIPS year using BLS_unemployment_state
+	keep if _merge==3
+	drop _merge	
+	sum year
+	* Merge in CPI-U (1982-1984 base)
+	rename year Year
+	merge m:1 Year using CPIU
+	rename Annual CPIU
+	rename Year year
+	keep if _merge==3
+	drop _merge
+	cd "`datadir'"
+	* rename and adjust inequality controls
+	rename Gini gini
+	rename Top1_adj top1
+	replace top1=top1/100
+	* Keep Variables of Interest
+	keep FIPS year own_rev tax_rev dir_exp state pop INCOME INCperCAP top1 gini unemp CPIU 
+	order state FIPS year 
+	save allcontrols, replace
+	summarize
+}
+************************************************
+* Save Subsector Files
+************************************************
+if "`subsector'"=="yes" {
+	*define files of interest
+	local mainfiles NCCS_ntee_state_year NCCS_foundations NCCS_mCF
+	local sectorfiles `" "CF" "CFwo" `BIG' `CFSPILL' "'
+	* Add Controls, inflate, generate overhead, nonprofits counter
+	foreach file of local mainfiles {
+		di "..."
+		di "Prepping `file'"
+		* Add Controls
+		clear all
+		cd "`datadir'"
+		use `file'
+		rename fisyr year
+		merge m:1 state year using allcontrols
+		drop _merge
+		* Inflate to 2012 Dollars
+		qui sum CPIU if year==2012
+		local cpi83in2012 = r(max)
+		local test = r(min)
+		if `cpi83in2012'!=`test' {
+			error
+		}
+		qui foreach var of varlist cont-compens {
+			replace `var'=`var'*`cpi83in2012'/CPIU
+		}
+		* generate OverHead Variable
+		replace rentexp=0 if rentexp==.
+		replace compens=0 if compens==.
+		gen overhead = rentexp + compens		
+		* save tempfile
+		cd "`datadir'\temp"
+		save `file', replace
+	}
+	foreach set of local sectorfiles {
+		di "..."
+		di "creating `set'"
+		clear all
+		cd "`datadir'\temp"
+		* load primary dataset
+		foreach i of local BIG {
+			if "`set'"=="`i'" {
+				use NCCS_ntee_state_year
+				di "NCCS_ntee_state_year loaded"
+			}
+		}
+		* load community foundations file
+		if "`set'"=="CF" | "`set'"=="CFwo" {
+			use NCCS_foundations
+			di "NCCS_foundations loaded"
+		}
+		* load mCF dataset for IA spillover estimates
+		foreach i of local CFSPILL {
+			if "`set'"=="`i'" {
+				use NCCS_mCF
+				di "NCCS_mCF loaded"
+			}
+		}
+		* Reduce to Public and Societal Benefit Organizations
+		if  "`set'"=="PUBmCF" | "`set'"=="PUB" {
+			keep if MAJOR=="Public"			
+		}
+		* Reduce to NTEE1 S&T Organizations
+		if "`set'"=="STmCF" | "`set'"=="ST" {
+			keep if NTEE1=="S" | NTEE1=="T"
+		}
+		* Drop CBCBF (outlier) from main CF file 
+		if "`set'"=="CF" {
+			drop if ein==421504843
+		}
+		sort state year
+		collapse (sum) cont-overhead, by(state year)
+		* In CF File: rename "nonprofits" "foundations"
+		if "`set'"=="CF" | "`set'"=="CFwo" {
+			rename nonprofits foundations
+		}
+		summarize	
+	}
+	save `set', replace
+}
+
+
+
+

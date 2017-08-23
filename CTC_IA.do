@@ -32,8 +32,8 @@ local regtables="no"
 local robustclass `" "CF" "'
 local primaryclasses `" "CF" "CFwo" "'
 local DDclasses `" "DD" "DDwo" "DDD" "DDDwo""'
-local bigcatlist `" "ALL" "BIG1" "BIG2" "' /*BIG1 is NTEE cat S and T, BIG2 is cats RSTUVW*/
-local spilllist `" "ALLm" "COMP1" "COMP2" "' /*ALLm, COMP1, and COMP2, are ALL, BIG1, and BIG2 without CFs*/
+local bigcatlist `" "ALL" "ST" "PUB" "' /*ST is NTEE cat S and T, PUB is cats RSTUVW*/
+local spilllist `" "ALLmCF" "STmCF" "PUBmCF" "' /*ALLmCF, STmCF, and PUBmCF, are ALL, ST, and PUB without CFs*/
 local sumsuffixes `""'
 local trainingsuffixes `" `sumsuffixes' "np" "89" "89np" "'
 local SCMsuffixes `" "np" "nz" "nst" "'
@@ -80,74 +80,10 @@ if "`firmlevel'"=="yes" {
 ***Clean****
 if  "`clean'"=="yes" {
 	foreach uni of local universe {
-		clear all
-		cd "`datadir'"
-		di "Creating dataset for `uni' "
-		*locals for comparison groups and bigcatlists
-		local comp "no"
-		foreach u of local COMP {
-			if "`uni'"=="`u'" {
-				local comp "yes"
-			}
-		}
-		if "`comp'"=="yes" {
-			use NCCS_ntee_state_year
-			di "Load ntee by state by year file"
-			gen NTEE1=""
-			foreach letter in A B C D E F G H I J K L M N O P Q R S T U V W X Y Z {
-				replace NTEE1="`letter'" if regexm(nteecc, "^`letter'")
-			}
-			gen MAJOR=""
-			foreach letter in A B Q X Y Z {
-				replace MAJOR="`letter'" if NTEE1=="`letter'"
-			}
-			replace MAJOR = "CD" if NTEE1=="C"
-			replace MAJOR = "CD" if NTEE1=="D"
-			foreach letter in E F G H  {
-				replace MAJOR="Health" if NTEE1=="`letter'"
-			}
-			foreach letter in I J K L M N O P {
-				replace MAJOR="Human" if NTEE1=="`letter'"
-			}
-			foreach letter in R S T U V W {
-				replace MAJOR="Public" if NTEE1=="`letter'"
-			}
-			*drop CFs
-			if "`uni'"=="COMP1" | "`uni'"=="COMP2" |  "`uni'"=="ALLm" {
-				drop if nteecc=="T31"
-			}
-			if "`uni'"=="COMP1" | "`uni'"=="BIG1" {
-				keep if NTEE1=="S" | NTEE1=="T"
-			}
-			if  "`uni'"=="COMP2" | "`uni'"=="BIG2" {
-				keep if MAJOR=="Public"			
-			}
 			collapse (sum) cont-compens nonprofits, by(state fisyr)
 		}
-		else {
-			if "`uni'"=="firmALL" {
-				/*Load NCCS Data for firmALL File*/
-				use "`datadir'/CombinedNCCS.dta" 
-				di "Load Big NCCS file"
-			}
-			else {
-				/*Load Foundations NCCS file*/
-				use NCCS_foundations
-				di "Load Foundations file"
-			}	
-			summarize
+
 			***sum to state year level
-			****carryforward state if it is missing
-			sort ein fisyr
-			bysort ein: carryforward state if state=="", replace
-			bysort ein: carryforward state if state=="", replace
-			gsort ein - fisyr
-			by ein : carryforward state if state=="", replace 
-			by ein: carryforward state if state=="", replace
-			di "Checking to make sure no state identifiers are missing"
-			di "Number missing:"
-			count if state==""
-			sort ein fisyr
 			***generate count of number of foundations
 			if "`uni'"!="firmALL" {
 				qui gen foundations=1
@@ -156,63 +92,8 @@ if  "`clean'"=="yes" {
 				qui gen CF=0
 				qui replace CF=1 if nteecc=="T31"
 			}
-			****drop outlier*****
-			if "`uni'"=="CF"{
-				drop if ein==421504843
-			}
-			if "`uni'"=="CF" |  "`uni'"=="CFwo" {
-				******collapse to state level	
-				collapse (sum) cont-compens foundations (first) nteecc, by(state fisyr)
-			}
 		}
-		/*SPACE LEFT FOR
-			COMPARISON WITH AZCREDIT FILE
-		*/
-		****Bring in Controls****
-		qui cd "`datadir'"
-		***rename state and year variables for merge
-			rename state AB
-			rename fisyr year
-		**Merge in controls***
-		di "Merging NCCS Data with Control datasets"
-		merge m:1 AB year using StateLevelDemographicControls
-			keep if _merge==3
-			drop _merge
-		merge m:1 AB year using StateLevelUnemployment
-			keep if _merge==3
-			drop _merge	
-		merge m:1 FIPS year using CensusOfGovernments_adjusted
-			keep if _merge==3
-			drop _merge
-		merge m:1 FIPS year using SEERpopulation
-			keep if _merge==3
-			drop _merge
-		**Keep only SEER population estimate
-			replace POP=pop
-			drop pop totalpop
-		**rename controls
-		rename Gini gini
-		rename Top1_adj top1
-		replace top1=top1/100
-		****Bring in Price Index and Convert to Real 2012 Dollars****
-		**Merge in CPI-U (1982-1984 base)***	
-		merge m:1 year using cpi83_80_to_2013
-			keep if _merge==3
-			drop _merge
-		*****inflate variables to 2012 Dollars****************
-		qui sum cpi83 if year==2012
-		local cpi83in2012 = r(max)
-		local test = r(min)
-		if `cpi83in2012'!=`test' {
-			error
-		}
-		foreach var of varlist cont-compens {
-			replace `var'=`var'*`cpi83in2012'/cpi83
-		}
-		****generate OverHead Variable*****
-		replace rentexp=0 if rentexp==.
-		replace compens=0 if compens==.
-		gen overhead = rentexp + compens		
+	
 		**Create Per Capita and Log Form Measures***
 		if "`uni'"=="CF" | "`uni'"=="CFwo" {
 			gen num=foundations*1000000
