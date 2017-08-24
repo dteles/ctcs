@@ -1,0 +1,2950 @@
+------------------------------------------------------------------------------------------------------------------------
+      name:  <unnamed>
+       log:  D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\ctcs_dofiles\CharitableTaxCredits_20170824_140452.log
+  log type:  text
+ opened on:  24 Aug 2017, 14:04:52
+.         pwd
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\ctcs_dofiles
+.         display "$S_DATE $S_TIME"
+24 Aug 2017 14:04:52
+. }
+
+. di "-------------------------"
+-------------------------
+
+. di "`c(username)' `c(current_date)'"
+dteles 24 Aug 2017
+
+. di "`c(current_time)'"
+14:04:52
+
+. di "-------------------------"
+-------------------------
+
+. 
+. **************************************************
+. * Net Installs ensure all programs are loaded
+. **************************************************
+. /* right now, we don't need these
+> ssc install sutex
+> ssc install estout, replace
+> ssc install mat2txt
+> net install outtable, from("http://fmwww.bc.edu/RePEc/bocode/o/") replace
+> ssc install egenmore, replace
+> ssc install spmap, replace
+> ssc install corrtex
+> ssc install avar, replace
+> ssc install weakiv, replace
+> ssc install ivreg2, replace
+> ssc install xtivreg2, replace
+> ssc install ranktest, replace
+> ssc install synth, replace
+> ssc install matsave
+> ssc install labutil, replace
+> ssc install carryforward, replace
+> ssc install unique, replace
+> */
+. 
+. **************************************************
+. * Create Datasets
+. **************************************************
+. cd "`projectdir'\ctcs_dofiles"
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\ctcs_dofiles
+
+. if "`makedata'"=="yes" do CTC_makedata.do
+
+. *************************************************
+. * Charitable Tax Credits Analysis
+. * CTC_makedata.do
+. * 8/23/2017, version 1
+. * Dan Teles
+. *************************************************
+. * this file creates datasets 
+. * it can be called from CharitableTaxCredits.do
+. **************************************************
+. * Directories
+. **************************************************
+. local projectdir="D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits"
+
+. local controldir "D:\Users\dteles\Box Sync\DTeles\MyControls"
+
+. local datadir="`projectdir'\data"
+
+. local output="`projectdir'\output"
+
+. local project="CharitableTaxCredits"
+
+. **************************************************
+. * Locals to define which sections to run
+. **************************************************
+. local mergeNCCS="yes"
+
+. local makecntrl="yes"
+
+. local masterfile="yes"
+
+. local statefiles="yes"
+
+. local CF="yes"
+
+. local subsector="yes"
+
+. local diffndiff="yes"
+
+. **************************************************
+. * Locals to define which subsets to create
+. **************************************************
+. local BIG `" "ALL" "PUB" "ST" "'
+
+. local CFSPILL `" "ALLmCF" "PUBmCF" "STmCF" "'
+
+. local DDfiles   `" "DD" "DDD" "'
+
+. **************************************************
+. * Save Time-stamped copy of this .do file
+. **************************************************
+. if "$makecopy"=="yes"{
+.         local time : di %tcCCYYNNDD!_HHMMSS clock("`c(current_date)'`c(current_time)'","DMYhms")
+.         copy CTC_makedata.do "CTC_makedata_`time'.do"
+. }
+
+. **************************************************
+. * Create Datasets
+. **************************************************
+. *Create 1989-2009 temp files
+. **************************
+. if "`mergeNCCS'"=="yes" {
+.         foreach num of numlist 1989/2009 {
+  2.                 cd "`datadir'\NCCSextracts"
+  3.                 use CorePC`num', replace
+  4.                 if `num'==1990 {
+  5.                         *keep variables of interest
+.                         keep ein fisyr name-zip5 cont dues invinc totrev solicit ass_boy-liab_eoy fundfees compens
+  6.                         gen progrev=0  // generate program revenue variable
+  7.                 }
+  8.                 if `num'==2008 | `num'==2009 {
+  9.                         keep ein fisyr name-zip5 cont progrev dues invinc totrev solicit ass_boy-liab_eoy fundfees 
+> direxp rentexp compens
+ 10.                         ***Edit Fundraising Expenses for consistancy after change in 990 Form
+.                         replace solicit=fundfees+direxp if fundfees+direxp>solicit & fundfees!=. & direxp!=.
+ 11.                         replace solicit=fundfees+direxp if solicit==0 | solicit==.
+ 12.                 }                       
+ 13.                 if `num'!=1990 & `num'!=2008 & `num'!=2009 {
+ 14.                         keep ein fisyr name-zip5 cont progrev dues invinc totrev solicit ass_boy-liab_eoy fundfees 
+> rentexp compens
+ 15.                 }
+ 16.                 *Edit Program Revenue Variable for consistancy in measurement across years**
+.                 replace progrev=progrev+dues
+ 17.                 drop dues       
+ 18.                 *destring for help with merge and sort.
+.                 destring ein fisyr , replace force
+ 19.                 recast long ein
+ 20.                 *generate a variable for which version the data came from
+.                 gen yr_filed = `num'
+ 21.                 *save temp file*
+.                 cd "`datadir'\temp"
+ 22.                 save CorePC`num'_temp, replace
+ 23.         }
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+(33,921 real changes made)
+ein: all characters numeric; replaced as long
+fisyr: all characters numeric; replaced as int
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+file CorePC1989_temp.dta saved
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+(35,857 real changes made)
+ein: all characters numeric; replaced as long
+fisyr: all characters numeric; replaced as int
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+file CorePC1990_temp.dta saved
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+(35,313 real changes made)
+ein: all characters numeric; replaced as long
+fisyr: all characters numeric; replaced as int
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+file CorePC1991_temp.dta saved
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+(37,283 real changes made)
+ein: all characters numeric; replaced as long
+fisyr: all characters numeric; replaced as int
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+file CorePC1992_temp.dta saved
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+(38,847 real changes made)
+ein: all characters numeric; replaced as long
+fisyr: all characters numeric; replaced as int
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+file CorePC1993_temp.dta saved
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+(40,774 real changes made)
+ein: all characters numeric; replaced as long
+fisyr: all characters numeric; replaced as int
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+file CorePC1994_temp.dta saved
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+(45,734 real changes made)
+ein: all characters numeric; replaced as long
+fisyr: all characters numeric; replaced as int
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+file CorePC1995_temp.dta saved
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+(48,225 real changes made)
+ein: all characters numeric; replaced as long
+fisyr: all characters numeric; replaced as int
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+file CorePC1996_temp.dta saved
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+(52,415 real changes made)
+ein: all characters numeric; replaced as long
+fisyr: all characters numeric; replaced as int
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+file CorePC1997_temp.dta saved
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+(54,141 real changes made)
+ein: all characters numeric; replaced as long
+fisyr: all characters numeric; replaced as int
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+file CorePC1998_temp.dta saved
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+(58,975 real changes made)
+ein: all characters numeric; replaced as long
+fisyr: all characters numeric; replaced as int
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+file CorePC1999_temp.dta saved
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+(58,996 real changes made)
+ein: contains nonnumeric characters; replaced as long
+(1 missing value generated)
+fisyr: all characters numeric; replaced as int
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+file CorePC2000_temp.dta saved
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+(61,328 real changes made)
+ein: contains nonnumeric characters; replaced as long
+(1 missing value generated)
+fisyr: all characters numeric; replaced as int
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+file CorePC2001_temp.dta saved
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+(64,081 real changes made)
+ein: contains nonnumeric characters; replaced as long
+(1 missing value generated)
+fisyr: all characters numeric; replaced as int
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+file CorePC2002_temp.dta saved
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+(66,439 real changes made)
+ein: all characters numeric; replaced as long
+fisyr: all characters numeric; replaced as int
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+file CorePC2003_temp.dta saved
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+(69,000 real changes made)
+ein: all characters numeric; replaced as long
+fisyr: all characters numeric; replaced as int
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+file CorePC2004_temp.dta saved
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+(71,209 real changes made)
+ein: all characters numeric; replaced as long
+fisyr: all characters numeric; replaced as int
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+file CorePC2005_temp.dta saved
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+(73,465 real changes made)
+ein: all characters numeric; replaced as long
+fisyr: all characters numeric; replaced as int
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+file CorePC2006_temp.dta saved
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+(76,511 real changes made)
+ein: all characters numeric; replaced as long
+fisyr: all characters numeric; replaced as int
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+file CorePC2007_temp.dta saved
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+(92,216 real changes made)
+(10 real changes made)
+(41,854 real changes made)
+ein: all characters numeric; replaced as long
+fisyr: all characters numeric; replaced as int
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+file CorePC2008_temp.dta saved
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+(108,597 real changes made)
+(26 real changes made)
+(6,225 real changes made)
+ein: all characters numeric; replaced as long
+fisyr: all characters numeric; replaced as int
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+file CorePC2009_temp.dta saved
+.         **************************
+.         *Create 2010 temp file
+.         **************************
+.         cd "`datadir'\NCCSextracts"
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+.         use CorePC2010, replace
+.         keep ein fisyr name-zip5 cont progrev dues invinc totrev solicit ass_boy-liab_eoy fundfees direxp rentexp comp
+> ens
+.         *Edit Program Revenue Variable for consistancy in measurement across years**
+.         replace progrev=progrev+dues
+(46,524 real changes made)
+.         drop dues
+.         *Edit Fundraising Expenses for consistancy after change in 990 Form
+.         replace solicit=fundfees+direxp if fundfees+direxp>solicit & fundfees!=. & direxp!=.
+(111,663 real changes made)
+.         replace solicit=fundfees+direxp if solicit==0 | solicit==.
+(49 real changes made)
+.         *destring for help with merge and sort.
+.         destring ein fisyr , replace
+ein: all characters numeric; replaced as long
+fisyr: all characters numeric; replaced as int
+.         recast long ein
+.         *generate a variable for which version the data came from
+.         gen yr_filed = 2010
+.         cd "`datadir'\temp"
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+.         save CorePC2010_temp, replace
+file CorePC2010_temp.dta saved
+.         **************************
+.         *Create 2011 temp file
+.         **************************
+.         cd "`datadir'\NCCSextracts"
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+.         use CorePC2011, replace
+.         keep ein fisyr name-zip5 cont progrev invinc totrev ass_boy-liab_eoy fundfees lessdirf lessdirg rentexp compen
+> s
+.         ***Edit Fundraising Expenses for consistancy after change in 990 Form
+.         gen solicit=fundfees+lessdirf+lessdirg
+(188,833 missing values generated)
+.         ****destring for help with merge and sort.
+.         destring ein fisyr , replace
+ein: all characters numeric; replaced as long
+fisyr: all characters numeric; replaced as int
+.         recast long ein
+.         ****generate a variable for which version the data came from
+.         gen yr_filed = 2011
+.         cd "`datadir'\temp"
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+.         save CorePC2011_temp, replace
+file CorePC2011_temp.dta saved
+.         *******************************************
+.         *Create 2012 and 2013 temp files
+.         *******************************************
+.         foreach num of numlist 2012/2013 {
+  2.                 cd "`datadir'\NCCSextracts"     
+  3.                 use CorePC`num', replace
+  4.                 keep ein fisyr name-zip5 cont progrev invinc totrev ass_boy-liab_eoy lessdirf fundfees lessdirf les
+> sdirg rentexp compens
+  5.                         ***Edit Fundraising Expenses for consistancy after change in 990 Form
+.                         gen solicit=fundfees+lessdirf+lessdirg  
+  6.                         ****destring for help with merge and sort.
+.                         destring ein fisyr , replace
+  7.                         recast long ein
+  8.                         ****generate a variable for which version the data came from
+.                         gen yr_filed = 2012
+  9.                 ***Save 2012temp file***
+.                 cd "`datadir'\temp"
+ 10.                 save CorePC`num'_temp, replace
+ 11.         }
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+(178,940 missing values generated)
+ein: all characters numeric; replaced as long
+fisyr: all characters numeric; replaced as int
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+file CorePC2012_temp.dta saved
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\NCCSextracts
+(165,335 missing values generated)
+ein: all characters numeric; replaced as long
+fisyr: all characters numeric; replaced as int
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+file CorePC2013_temp.dta saved
+.         *********************************************
+.         *Merge Temp files into a Master file and Clean Data
+.         *********************************************
+.         use CorePC1989_temp, replace
+.         foreach num of numlist 1990/2013 {
+  2.                 cd "`datadir'\temp"
+  3.                 append using CorePC`num'_temp
+  4.         }
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data\temp
+.         **remove duplicates*****
+.         ***first, if duplicate entries exist within the same fiscal year and filing year, take the larger values of fi
+> nancial variables
+.         sort ein fisyr yr_filed
+.         order ein fisyr yr_filed
+.         collapse  (first) name-zip5 (max) cont-compens, by(ein fisyr yr_filed)
+.         ***second treat duplicates from filings in seperate years as ammended files.
+.         sort ein fisyr yr_filed /*sorts by year filed*/
+.         by ein fisyr: gen N=_N
+.         by ein fisyr: gen n=_n
+.         count
+  6,574,458
+.         * Keeps only the last filing***
+.         keep if N==n
+(978,189 observations deleted)
+.         drop N n
+.         count
+  5,596,269
+.         * clean string data
+.         foreach var of varlist name state city {
+  2.                 replace `var'=upper(`var')
+  3.                 replace `var' = subinstr(`var', "&", " AND ",.)
+  4.                 replace `var' = subinstr(`var', "-", " ",.)
+  5.                 replace `var' = subinstr(`var', "/", " ",.)
+  6.                 replace `var' = subinstr(`var', ",", " ",.)
+  7.                 replace `var' = subinstr(`var', "INCORPORATED", "INC.",.)
+  8.                 replace `var' = subinstr(`var', "CORPORRN", "CORP.",.)
+  9.                 replace `var' = subinstr(`var', "  ", " ",.)
+ 10.                 replace `var' = subinstr(`var', "  ", " ",.)
+ 11.                 egen `var'2=sieve(`var'), keep(alphabetic numeric space)
+ 12.                 replace `var'=`var'2
+ 13.                 drop `var'2
+ 14.                 replace `var'=trim(`var')
+ 15.                 replace `var'=trim(`var')
+ 16.         }
+(26 real changes made)
+variable name was str60 now str72
+(197,332 real changes made)
+(229,910 real changes made)
+(7,608 real changes made)
+(627 real changes made)
+(88,564 real changes made)
+(0 real changes made)
+(213,123 real changes made)
+(8,803 real changes made)
+(3455 missing values generated)
+(92,098 real changes made)
+(1,803 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(4236 missing values generated)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(2,075 real changes made)
+variable city was str22 now str23
+(13 real changes made)
+(1,737 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(299 real changes made)
+(284 real changes made)
+(6422 missing values generated)
+(8 real changes made)
+(0 real changes made)
+(0 real changes made)
+.         * carryforward state if it is missing
+.         sort ein fisyr
+.         bysort ein (fisyr): carryforward state if state=="", replace
+state:  (2,137 real changes made)
+.         bysort ein (fisyr): carryforward state if state=="", replace
+state:  (0 real changes made)
+.         bysort ein (fisyr): carryforward state if state=="", replace
+state:  (0 real changes made)
+.         gsort ein - fisyr
+.         bysort ein (fisyr): carryforward state if state=="", replace 
+state:  (0 real changes made)
+.         bysort ein (fisyr): carryforward state if state=="", replace
+state:  (0 real changes made)
+.         di "Checking to make sure no state identifiers are missing"
+Checking to make sure no state identifiers are missing
+.         di "Number missing:"
+Number missing:
+.         count if state==""
+  2,099
+.         sort ein fisyr  
+.         drop if state==""
+(2,099 observations deleted)
+.         ***Save Combined Project File**********
+.         cd "`datadir'"
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data
+.         save CombinedNCCS, replace
+file CombinedNCCS.dta saved
+. }
+
+. ************************************************
+. * State-by-year Controls Files
+. ************************************************
+. if "`makecntrl'"=="yes" {
+.         * Load census government finance data
+.         cd "`controldir'\Census\governments"
+D:\Users\dteles\Box Sync\DTeles\MyControls\Census\governments
+.         use CensusStateGov
+.         * keep State and Local Aggregate
+.         keep if gov_lvl==1
+(3,978 observations deleted)
+.         drop gov_lvl
+.         sum year
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+        year |      1,989    1994.897    11.44682       1972       2014
+.         * Merge in SEER Population data
+.         cd "`controldir'\SEER_population"
+D:\Users\dteles\Box Sync\DTeles\MyControls\SEER_population
+.         merge 1:1 FIPS year using SEERpopulation_state
+(note: variable FIPS was byte, now float to accommodate using data's values)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                           409
+        from master                         0  (_merge==1)
+        from using                        409  (_merge==2)
+
+    matched                             1,989  (_merge==3)
+    -----------------------------------------
+.         keep if _merge==3
+(409 observations deleted)
+.         drop _merge     
+.         sum year
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+        year |      1,989    1994.897    11.44682       1972       2014
+.         * Merge in BEA personal Income data
+.         cd "`controldir'\BEA"
+D:\Users\dteles\Box Sync\DTeles\MyControls\BEA
+.         merge 1:1 FIPS year using BEA_PersonalIncome_state
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                         3,291
+        from master                         0  (_merge==1)
+        from using                      3,291  (_merge==2)
+
+    matched                             1,989  (_merge==3)
+    -----------------------------------------
+.         keep if _merge==3
+(3,291 observations deleted)
+.         drop _merge
+.         sum year
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+        year |      1,989    1994.897    11.44682       1972       2014
+.         *drop BEA population in favor of SEER population
+.         drop POP 
+.         * merge in Frank Ineqaulity data
+.         rename year Year
+.         drop State
+.         rename GeoName State
+.         cd "`controldir'\Frank_inequality"
+D:\Users\dteles\Box Sync\DTeles\MyControls\Frank_inequality
+.         merge 1:1 State Year using Frank_WTID_2013
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                         3,073
+        from master                        51  (_merge==1)
+        from using                      3,022  (_merge==2)
+
+    matched                             1,938  (_merge==3)
+    -----------------------------------------
+.         drop st // Frank state code
+.         keep if _merge==3
+(3,073 observations deleted)
+.         drop _merge
+.         merge 1:1 State Year using Frank_Gini_2013
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                         3,022
+        from master                         0  (_merge==1)
+        from using                      3,022  (_merge==2)
+
+    matched                             1,938  (_merge==3)
+    -----------------------------------------
+.         drop st // Frank state code     
+.         keep if _merge==3
+(3,022 observations deleted)
+.         drop _merge
+.         rename Year year
+.         sum year
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+        year |      1,938    1994.395    11.16329       1972       2013
+.         * merge in unemployment data
+.         cd "`controldir'\BLS"
+D:\Users\dteles\Box Sync\DTeles\MyControls\BLS
+.         merge 1:1 FIPS year using BLS_unemployment_state
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                           296
+        from master                        51  (_merge==1)
+        from using                        245  (_merge==2)
+
+    matched                             1,887  (_merge==3)
+    -----------------------------------------
+.         keep if _merge==3
+(296 observations deleted)
+.         drop _merge     
+.         sum year
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+        year |      1,887        1995    10.67991       1977       2013
+.         * Merge in CPI-U (1982-1984 base)
+.         rename year Year
+.         merge m:1 Year using CPIU
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                           360
+        from master                       357  (_merge==1)
+        from using                          3  (_merge==2)
+
+    matched                             1,530  (_merge==3)
+    -----------------------------------------
+.         rename Annual CPIU
+.         rename Year year
+.         keep if _merge==3
+(360 observations deleted)
+.         drop _merge
+.         cd "`datadir'"
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data
+.         * rename and adjust inequality controls
+.         rename Gini gini
+.         rename Top1_adj top1
+.         replace top1=top1/100
+(1,530 real changes made)
+.         * Keep Variables of Interest
+.         keep FIPS year own_rev tax_rev dir_exp state pop INCOME INCperCAP top1 gini unemp CPIU 
+.         order state FIPS year 
+.         save allcontrols, replace
+file allcontrols.dta saved
+.         summarize
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+       state |          0
+        FIPS |      1,530    28.96078    15.68196          1         56
+        year |      1,530      1998.5    8.658271       1984       2013
+     own_rev |      1,528    2.37e+07    3.34e+07     917024   2.90e+08
+     tax_rev |      1,528    1.64e+07    2.36e+07     673884   2.04e+08
+-------------+---------------------------------------------------------
+     dir_exp |      1,528    3.49e+07    5.10e+07    1343148   4.50e+08
+         pop |      1,530     5416944     6040979     453690   3.84e+07
+      INCOME |      1,530    1.60e+08    2.15e+08    6418440   1.86e+09
+   INCperCAP |      1,530    27911.35    10799.48       9465      66595
+        top1 |      1,530    .1554854    .0445625    .076124   .3606892
+-------------+---------------------------------------------------------
+        gini |      1,530     .574526    .0417725   .4666519   .7114252
+       unemp |      1,530    5.855752    1.958492        2.3       14.8
+        CPIU |      1,530    167.2676    39.00071      103.9    232.957
+. }
+
+. ************************************************
+. * Create Master File
+. ************************************************
+. if "`masterfile'"=="yes" {
+.         clear all
+.         cd "`datadir'"
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data
+.         use CombinedNCCS
+.         * Create "MAJOR" classification
+.         gen MAJOR=.
+(5,594,170 missing values generated)
+.         replace MAJOR = 1 if ntee1=="A"
+(600,093 real changes made)
+.         replace MAJOR = 2 if ntee1=="B"
+(938,995 real changes made)
+.         replace MAJOR = 3 if ntee1=="C" | ntee1=="D"
+(218,916 real changes made)
+.         foreach letter in E F G H  {
+  2.                 replace MAJOR=4 if ntee1=="`letter'"
+  3.         }
+(459,859 real changes made)
+(166,842 real changes made)
+(128,814 real changes made)
+(38,631 real changes made)
+.         foreach letter in I J K L M N O P {
+  2.                 replace MAJOR=5 if ntee1=="`letter'"
+  3.         }
+(100,596 real changes made)
+(80,135 real changes made)
+(60,633 real changes made)
+(289,089 real changes made)
+(88,765 real changes made)
+(410,335 real changes made)
+(144,869 real changes made)
+(773,485 real changes made)
+.         foreach letter in R S T U V W {
+  2.                 replace MAJOR=6 if ntee1=="`letter'"
+  3.         }
+(35,875 real changes made)
+(244,098 real changes made)
+(252,672 real changes made)
+(36,148 real changes made)
+(14,410 real changes made)
+(51,839 real changes made)
+.         replace MAJOR=7 if ntee1=="X"
+(333,960 real changes made)
+.         replace MAJOR=8 if ntee1=="Y"
+(15,780 real changes made)
+.         replace MAJOR=10 if ntee1=="Z"  
+(4,243 real changes made)
+.         * Merge in Controls
+.         rename fisyr year
+.         merge m:1 state year using allcontrols
+(note: variable year was int, now float to accommodate using data's values)
+
+    Result                           # of obs.
+    -----------------------------------------
+    not matched                        67,292
+        from master                    67,139  (_merge==1)
+        from using                        153  (_merge==2)
+
+    matched                         5,527,031  (_merge==3)
+    -----------------------------------------
+.         drop _merge
+.         * Inflate to 2012 Dollars
+.         qui sum CPIU if year==2012
+.         local cpi83in2012 = r(max)
+.         local test = r(min)
+.         if `cpi83in2012'!=`test' {
+.                 error
+.         }
+.         qui foreach var of varlist cont-compens {
+.         * generate OverHead Variable
+.         replace rentexp=0 if rentexp==.
+(592,912 real changes made)
+.         replace compens=0 if compens==.
+(463,905 real changes made)
+.         gen overhead = rentexp + compens                
+.         * save masterfile
+.         cd "`datadir'"
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data
+.         save NonprofitsMaster, replace
+file NonprofitsMaster.dta saved
+. }       
+
+. *********************************************
+. *Create State-by-NTEECC and State Aggregate Files
+. *********************************************
+. if "`statefiles'"=="yes" {
+.         * load data *
+.         if "`mergeNCCS'"=="no" {
+.                 cd "`datadir'"
+.                 use NonprofitsMaster, replace
+.         }       
+.         **Gen Number Variable
+.         gen nonprofits=1
+.         ***Collapse to State by NCCS by Year    
+.         sort state nteecc ein year
+.         order state nteecc ntee1 MAJOR
+.         sum
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+       state |          0
+      nteecc |          0
+       ntee1 |          0
+       MAJOR |  5,489,082    4.074924    1.772423          1         10
+         ein |  5,594,169    4.68e+08    2.66e+08     143597   9.96e+08
+-------------+---------------------------------------------------------
+        year |  5,594,323    2003.329    6.974954          1       2014
+    yr_filed |  5,594,170    2003.326    6.839151       1989       2012
+        name |          0
+     address |          0
+        city |          0
+-------------+---------------------------------------------------------
+         zip |          0
+        zip5 |          0
+        cont |  5,527,028     1040874    1.50e+07  -5.27e+07   7.13e+09
+     progrev |  5,527,028     3465896    7.38e+07  -2.50e+07   4.16e+10
+      invinc |  5,527,028    154722.9    1.19e+07  -1.96e+08   9.91e+09
+-------------+---------------------------------------------------------
+     rentexp |  5,594,323    12029.43    544213.8    -812388   4.27e+08
+      totrev |  5,527,028     5006305    8.84e+07  -2.70e+09   4.17e+10
+     solicit |  5,067,075    77923.72    4.27e+07   -3222318   8.84e+10
+     compens |  5,594,323    167588.6    9.12e+07  -5.07e+10   1.06e+11
+        FIPS |  5,527,184    28.05503    15.62071          1         56
+-------------+---------------------------------------------------------
+     own_rev |  5,521,301    6.55e+07    6.65e+07     917024   2.90e+08
+     tax_rev |  5,521,301    4.58e+07    4.69e+07     673884   2.04e+08
+     dir_exp |  5,521,301    9.87e+07    1.04e+08    1343148   4.50e+08
+         pop |  5,527,184    1.20e+07    1.01e+07     453690   3.84e+07
+      INCOME |  5,527,184    4.29e+08    4.15e+08    6418440   1.86e+09
+-------------+---------------------------------------------------------
+   INCperCAP |  5,527,184    34464.11    9685.688       9465      66595
+        top1 |  5,527,184    .1838957    .0508014    .076124   .3606892
+        gini |  5,527,184    .5991324     .039804   .4666519   .7114252
+       unemp |  5,527,184    6.226393    2.042969        2.3       14.8
+        CPIU |  5,527,184    188.5283    31.20391      103.9    232.957
+-------------+---------------------------------------------------------
+    overhead |  5,594,323      179618    9.12e+07  -5.07e+10   1.06e+11
+  nonprofits |  5,594,323           1           0          1          1
+.         collapse (first) MAJOR ntee1 FIPS-CPIU (sum) cont-compens overhead nonprofits, by(state nteecc year)    
+.         ****Save State-by-NTEECC File****
+.         cd "`datadir'"
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data
+.         save NCCS_ntee_state_year, replace      
+file NCCS_ntee_state_year.dta saved
+.         sum
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+       state |          0
+      nteecc |          0
+        year |    517,837    2001.833    7.915145          1       2014
+       MAJOR |    500,032    4.365125    1.655003          1         10
+       ntee1 |          0
+-------------+---------------------------------------------------------
+        FIPS |    500,927    28.56671    15.49442          1         56
+     own_rev |    499,959    3.29e+07    4.08e+07     917024   2.90e+08
+     tax_rev |    499,959    2.29e+07    2.88e+07     673884   2.04e+08
+     dir_exp |    499,959    4.88e+07    6.26e+07    1343148   4.50e+08
+         pop |    500,927     6788017     6981906     453690   3.84e+07
+-------------+---------------------------------------------------------
+      INCOME |    500,927    2.21e+08    2.60e+08    6418440   1.86e+09
+   INCperCAP |    500,927    31552.59    9998.247       9465      66595
+        top1 |    500,927    .1663423    .0455119    .076124   .3606892
+        gini |    500,927    .5868051    .0359623   .4666519   .7114252
+       unemp |    500,927    5.827651    1.914363        2.3       14.8
+-------------+---------------------------------------------------------
+        CPIU |    500,927    180.8751    32.75637      103.9    232.957
+        cont |    517,837    1.11e+07    7.74e+07  -5.27e+07   1.14e+10
+     progrev |    517,837    3.70e+07    5.52e+08  -1.40e+07   5.15e+10
+      invinc |    517,837     1651403    4.09e+07  -1.96e+08   9.91e+09
+     rentexp |    517,837    129956.9     2222833  -255392.1   4.27e+08
+-------------+---------------------------------------------------------
+      totrev |    517,837    5.34e+07    6.25e+08  -4.35e+08   5.17e+10
+     solicit |    517,837    762489.6    1.34e+08   -1364186   8.84e+10
+     compens |    517,837     1810502    3.00e+08  -5.07e+10   1.06e+11
+    overhead |    517,837     1940459    3.00e+08  -5.07e+10   1.06e+11
+  nonprofits |    517,837    10.80325    30.12871          1       2064
+.         ***Collapse to State by Year
+.         sort state year nteecc 
+.         collapse (first) MAJOR ntee1 FIPS-CPIU (sum) cont-compens overhead nonprofits, by(state year)
+.         ****Save State Aggregate File****
+.         cd "`datadir'"
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data
+.         save NCCS_state_year, replace   
+file NCCS_state_year.dta saved
+.         sum
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+       state |          0
+        year |      1,805    1998.213    47.85423          1       2014
+       MAJOR |      1,645    1.221884    .9148718          1         10
+       ntee1 |          0
+        FIPS |      1,530    28.96078    15.68196          1         56
+-------------+---------------------------------------------------------
+     own_rev |      1,528    2.37e+07    3.34e+07     917024   2.90e+08
+     tax_rev |      1,528    1.64e+07    2.36e+07     673884   2.04e+08
+     dir_exp |      1,528    3.49e+07    5.10e+07    1343148   4.50e+08
+         pop |      1,530     5416944     6040979     453690   3.84e+07
+      INCOME |      1,530    1.60e+08    2.15e+08    6418440   1.86e+09
+-------------+---------------------------------------------------------
+   INCperCAP |      1,530    27911.35    10799.48       9465      66595
+        top1 |      1,530    .1554854    .0445625    .076124   .3606892
+        gini |      1,530     .574526    .0417725   .4666519   .7114252
+       unemp |      1,530    5.855752    1.958492        2.3       14.8
+        CPIU |      1,530    167.2676    39.00071      103.9    232.957
+-------------+---------------------------------------------------------
+        cont |      1,805    3.19e+09    5.81e+09          0   4.24e+10
+     progrev |      1,805    1.06e+10    1.77e+10          0   1.44e+11
+      invinc |      1,805    4.74e+08    1.13e+09          0   1.68e+10
+     rentexp |      1,805    3.73e+07    7.29e+07          0   7.72e+08
+      totrev |      1,805    1.53e+10    2.55e+10          0   1.88e+11
+-------------+---------------------------------------------------------
+     solicit |      1,805    2.19e+08    2.29e+09          0   8.88e+10
+     compens |      1,805    5.19e+08    5.09e+09  -5.03e+10   1.07e+11
+    overhead |      1,805    5.57e+08    5.09e+09  -5.02e+10   1.07e+11
+  nonprofits |      1,805    3099.348    4522.457          1      38263
+. }
+
+. ************************************************
+. * Community Foundations Files
+. ************************************************
+. if "`CF'"=="yes" {
+.         clear all
+.         cd "`datadir'"
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data
+.         use NonprofitsMaster
+.         **Gen Number Variable
+.         gen nonprofits=1
+.         preserve
+.         * keep only community foundations
+.         keep if nteecc=="T31"
+(5,565,204 observations deleted)
+.         sort ein year
+.         save NCCS_foundations, replace
+file NCCS_foundations.dta saved
+.         restore
+.         * drop only community foundations // used for spillover estimates
+.         drop if nteecc=="T31"
+(29,119 observations deleted)
+.         save NCCS_mCF, replace
+file NCCS_mCF.dta saved
+. }
+
+. 
+. ************************************************
+. * Save Subsector Files
+. ************************************************
+. if "`subsector'"=="yes" {
+.         *define files of interest
+.         local sectorfiles `" "CF" "CFwo" `BIG' `CFSPILL' "'
+.         * create sector-level files
+.         foreach set of local sectorfiles {
+  2.                 di "..."
+  3.                 di "creating `set'"
+  4.                 clear all
+  5.                 cd "`datadir'"
+  6.                 * load primary dataset
+.                 foreach i of local BIG {
+  7.                         if "`set'"=="`i'" {
+  8.                                 use NCCS_ntee_state_year
+  9.                                 di "NCCS_ntee_state_year loaded"
+ 10.                         }
+ 11.                 }
+ 12.                 * load community foundations file
+.                 if "`set'"=="CF" | "`set'"=="CFwo" {
+ 13.                         use NCCS_foundations
+ 14.                         di "NCCS_foundations loaded"
+ 15.                 }
+ 16.                 * load mCF dataset for IA spillover estimates
+.                 foreach i of local CFSPILL {
+ 17.                         if "`set'"=="`i'" {
+ 18.                                 use NCCS_mCF
+ 19.                                 di "NCCS_mCF loaded"
+ 20.                         }
+ 21.                 }
+ 22.                 * Reduce to Public and Societal Benefit Organizations
+.                 if  "`set'"=="PUBmCF" | "`set'"=="PUB" {
+ 23.                         keep if MAJOR==6        
+ 24.                 }
+ 25.                 * Reduce to ntee1 S&T Organizations
+.                 if "`set'"=="STmCF" | "`set'"=="ST" {
+ 26.                         keep if ntee1=="S" | ntee1=="T"
+ 27.                 }
+ 28.                 * Drop CBCBF (outlier) from main CF file 
+.                 if "`set'"=="CF" {
+ 29.                         drop if ein==421504843
+ 30.                 }
+ 31.                 sort state year
+ 32.                 order state year MAJOR ntee1
+ 33.                 collapse (first) MAJOR ntee1 FIPS-CPIU (sum) cont-compens overhead nonprofits, by(state year)
+ 34.                 * generate additional variables and functional forms
+.                 gen num = nonprofits
+ 35.                 label var num "Number of Nonprofits"
+ 36.                 gen lnnum = ln(num)
+ 37.                 gen numPC = num * 1000000 / pop
+ 38.                 label var numPC "Nonprofits per Million people" 
+ 39.                 gen lnnumPC = ln(num * 1000000 / pop)
+ 40.                 foreach var of varlist cont progrev totrev solicit overhead own_rev dir_exp {
+ 41.                         gen `var'PC=`var'/pop
+ 42.                         gen ln`var'PC=ln(`var'/pop)
+ 43.                         gen ln`var'=ln(`var') 
+ 44.                         sum `var'PC ln`var'PC ln`var'
+ 45.                 }               
+ 46.                 foreach var of varlist cont progrev totrev solicit overhead own_rev dir_exp {
+ 47.                         replace ln`var'PC=ln((`var'+.01)/pop) if `var'==0
+ 48.                         replace ln`var'= ln(`var'+.01)
+ 49.                         sum `var'PC ln`var'PC
+ 50.                 }               
+ 51.                 gen POP_million=pop / 1000000
+ 52.                 gen lnPOP=ln(pop)
+ 53.                 gen lnINCperCAP=ln(INCperCAP)
+ 54.                 sum INCperCAP lnINCperCAP POP_million lnPOP             
+ 55.                 rename state AB
+ 56.                 * In CF File: rename "nonprofits" "foundations"
+.                 if "`set'"=="CF" | "`set'"=="CFwo" {
+ 57.                         rename nonprofits foundations
+ 58.                 }
+ 59.                 summarize
+ 60.                 * save sector level file
+.                 cd "`datadir'"
+ 61.                 save `set', replace             
+ 62.         }
+...
+creating CF
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data
+NCCS_foundations loaded
+(7 observations deleted)
+(96 missing values generated)
+(96 missing values generated)
+(96 missing values generated)
+(103 missing values generated)
+(103 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+      contPC |      1,286    16.88872      25.528          0   222.6825
+    lncontPC |      1,279    2.129997    1.417722  -8.435201   5.405747
+      lncont |      1,279    17.18008    1.713517   5.673257   21.50969
+(96 missing values generated)
+(277 missing values generated)
+(277 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   progrevPC |      1,286    1.679329    10.89922  -.0960812   143.8511
+ lnprogrevPC |      1,105   -1.911772    2.144426  -14.16086   4.968779
+   lnprogrev |      1,105    13.28474    2.262486   .6630887   18.47972
+(96 missing values generated)
+(97 missing values generated)
+(97 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+    totrevPC |      1,286    23.90326    35.61901  -.0854333   338.0829
+  lntotrevPC |      1,285    2.495114    1.358217  -3.984691   5.823291
+    lntotrev |      1,285    17.54116    1.679605   10.98988   21.70084
+(96 missing values generated)
+(272 missing values generated)
+(272 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   solicitPC |      1,286    .2188209    .4339765          0   4.850863
+ lnsolicitPC |      1,110    -2.37456    1.675322  -9.596935   1.579157
+   lnsolicit |      1,110     12.8093    1.952037   5.556783   16.85622
+(96 missing values generated)
+(158 missing values generated)
+(158 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+  overheadPC |      1,286    .5422457    8.012156          0    287.318
+lnoverheadPC |      1,224   -1.586631    1.132405  -7.409012    5.66059
+  lnoverhead |      1,224    13.47977    1.526023   6.607495   21.75425
+(98 missing values generated)
+(98 missing values generated)
+(98 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   own_revPC |      1,284    4.709502    2.042787   1.610469   23.14079
+ lnown_revPC |      1,284    1.474823    .3760905   .4765252   3.141597
+   lnown_rev |      1,284    16.52293    1.059844   14.16837   19.48436
+(98 missing values generated)
+(98 missing values generated)
+(98 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   dir_expPC |      1,284    6.850607    2.889996   2.234968   22.31618
+ lndir_expPC |      1,284    1.845345     .393984   .8042271   3.105312
+   lndir_exp |      1,284    16.89345    1.074804   14.50429   19.92366
+(7 real changes made)
+(108 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+      contPC |      1,286    16.88872      25.528          0   222.6825
+    lncontPC |      1,286    2.016178    2.091986   -20.8897   5.405747
+(177 real changes made)
+(385 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   progrevPC |      1,286    1.679329    10.89922  -.0960812   143.8511
+ lnprogrevPC |      1,282   -4.230271    6.134269  -21.23412   4.968779
+(0 real changes made)
+(101 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+    totrevPC |      1,286    23.90326    35.61901  -.0854333   338.0829
+  lntotrevPC |      1,285    2.495114    1.358217  -3.984691   5.823291
+(176 real changes made)
+(416 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   solicitPC |      1,286    .2188209    .4339765          0   4.850863
+ lnsolicitPC |      1,286   -4.619333    5.858314  -21.74489   1.579157
+(62 real changes made)
+(225 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+  overheadPC |      1,286    .5422457    8.012156          0    287.318
+lnoverheadPC |      1,286   -2.437454    3.945425  -21.76933    5.66059
+(0 real changes made)
+(0 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   own_revPC |      1,284    4.709502    2.042787   1.610469   23.14079
+ lnown_revPC |      1,284    1.474823    .3760905   .4765252   3.141597
+(0 real changes made)
+(1 real change made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   dir_expPC |      1,284    6.850607    2.889996   2.234968   22.31618
+ lndir_expPC |      1,284    1.845345     .393984   .8042271   3.105312
+(96 missing values generated)
+(96 missing values generated)
+(96 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   INCperCAP |      1,286    30366.94    9965.461      12684      66595
+ lnINCperCAP |      1,286     10.2678    .3284335   9.448096   11.10639
+ POP_million |      1,286    5.635316    6.257203     .45369   38.41413
+       lnPOP |      1,286    15.04532    1.030925   13.02517   17.46394
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+          AB |          0
+        year |      1,382    2001.407    7.561549       1987       2014
+       MAJOR |      1,382           6           0          6          6
+       ntee1 |          0
+        FIPS |      1,286    28.98834    15.71271          1         56
+-------------+---------------------------------------------------------
+     own_rev |      1,284    2.65e+07    3.54e+07    1423133   2.90e+08
+     tax_rev |      1,284    1.83e+07    2.50e+07     950482   2.04e+08
+     dir_exp |      1,284    3.91e+07    5.42e+07    1991288   4.50e+08
+         pop |      1,286     5635316     6257203     453690   3.84e+07
+      INCOME |      1,286    1.78e+08    2.28e+08    7550290   1.86e+09
+-------------+---------------------------------------------------------
+   INCperCAP |      1,286    30366.94    9965.461      12684      66595
+        top1 |      1,286    .1612923    .0447799   .0820598   .3606892
+        gini |      1,286     .584384    .0353771   .5152523   .7114252
+       unemp |      1,286    5.712675    1.879561        2.3       13.7
+        CPIU |      1,286    177.9668    32.90486      113.6    232.957
+-------------+---------------------------------------------------------
+        cont |      1,382    7.41e+07    1.38e+08          0   2.20e+09
+     progrev |      1,382     3526601    1.12e+07  -65964.29   1.06e+08
+      invinc |      1,382    1.51e+07    2.28e+07   -4728971   1.69e+08
+     rentexp |      1,382    148108.4    548038.9          0    7699312
+      totrev |      1,382    1.05e+08    1.80e+08  -114512.4   2.66e+09
+-------------+---------------------------------------------------------
+     solicit |      1,382     1053842     2121498          0   2.09e+07
+     compens |      1,382     3451931    7.54e+07          0   2.80e+09
+    overhead |      1,382     3600039    7.54e+07          0   2.80e+09
+ foundations |      1,382    21.06512    25.48573          1        242
+         num |      1,382    21.06512    25.48573          1        242
+-------------+---------------------------------------------------------
+       lnnum |      1,382    2.378205    1.240784          0   5.488938
+       numPC |      1,286    4.832399    4.155704   .0360009   29.95774
+     lnnumPC |      1,286    1.266949    .8228181  -3.324213   3.399788
+      contPC |      1,286    16.88872      25.528          0   222.6825
+    lncontPC |      1,286    2.016178    2.091986   -20.8897   5.405747
+-------------+---------------------------------------------------------
+      lncont |      1,382    15.55643    5.956189   -4.60517   21.50969
+   progrevPC |      1,286    1.679329    10.89922  -.0960812   143.8511
+ lnprogrevPC |      1,282   -4.230271    6.134269  -21.23412   4.968779
+   lnprogrev |      1,378    9.740519    7.415203   -4.60517   18.47972
+    totrevPC |      1,286    23.90326    35.61901  -.0854333   338.0829
+-------------+---------------------------------------------------------
+  lntotrevPC |      1,285    2.495114    1.358217  -3.984691   5.823291
+    lntotrev |      1,381    16.00166    5.862765   -4.60517   21.70084
+   solicitPC |      1,286    .2188209    .4339765          0   4.850863
+ lnsolicitPC |      1,286   -4.619333    5.858314  -21.74489   1.579157
+   lnsolicit |      1,382    9.381854    7.143843   -4.60517   16.85622
+-------------+---------------------------------------------------------
+  overheadPC |      1,286    .5422457    8.012156          0    287.318
+lnoverheadPC |      1,286   -2.437454    3.945425  -21.76933    5.66059
+  lnoverhead |      1,382    11.41217    5.933272   -4.60517   21.75425
+   own_revPC |      1,284    4.709502    2.042787   1.610469   23.14079
+ lnown_revPC |      1,284    1.474823    .3760905   .4765252   3.141597
+-------------+---------------------------------------------------------
+   lnown_rev |      1,284    16.52293    1.059844   14.16837   19.48436
+   dir_expPC |      1,284    6.850607    2.889996   2.234968   22.31618
+ lndir_expPC |      1,284    1.845345     .393984   .8042271   3.105312
+   lndir_exp |      1,284    16.89345    1.074804   14.50429   19.92366
+ POP_million |      1,286    5.635316    6.257203     .45369   38.41413
+-------------+---------------------------------------------------------
+       lnPOP |      1,286    15.04532    1.030925   13.02517   17.46394
+ lnINCperCAP |      1,286     10.2678    .3284335   9.448096   11.10639
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data
+file CF.dta saved
+...
+creating CFwo
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data
+NCCS_foundations loaded
+(96 missing values generated)
+(96 missing values generated)
+(96 missing values generated)
+(103 missing values generated)
+(103 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+      contPC |      1,286    16.91504    25.53572          0   222.6825
+    lncontPC |      1,279    2.131359    1.418394  -8.435201   5.405747
+      lncont |      1,279    17.18144    1.713948   5.673257   21.50969
+(96 missing values generated)
+(277 missing values generated)
+(277 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   progrevPC |      1,286    1.679356    10.89921  -.0960812   143.8511
+ lnprogrevPC |      1,105   -1.910572    2.143421  -14.16086   4.968779
+   lnprogrev |      1,105    13.28594    2.261378   .6630887   18.47972
+(96 missing values generated)
+(97 missing values generated)
+(97 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+    totrevPC |      1,286    23.92984    35.62028  -.0854333   338.0829
+  lntotrevPC |      1,285    2.496399    1.358602  -3.984691   5.823291
+    lntotrev |      1,285    17.54245    1.679798   10.98988   21.70084
+(96 missing values generated)
+(272 missing values generated)
+(272 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   solicitPC |      1,286    .2188209    .4339765          0   4.850863
+ lnsolicitPC |      1,110    -2.37456    1.675322  -9.596935   1.579157
+   lnsolicit |      1,110     12.8093    1.952037   5.556783   16.85622
+(96 missing values generated)
+(158 missing values generated)
+(158 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+  overheadPC |      1,286    .5422457    8.012156          0    287.318
+lnoverheadPC |      1,224   -1.586631    1.132405  -7.409012    5.66059
+  lnoverhead |      1,224    13.47977    1.526023   6.607495   21.75425
+(98 missing values generated)
+(98 missing values generated)
+(98 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   own_revPC |      1,284    4.709502    2.042787   1.610469   23.14079
+ lnown_revPC |      1,284    1.474823    .3760905   .4765252   3.141597
+   lnown_rev |      1,284    16.52293    1.059844   14.16837   19.48436
+(98 missing values generated)
+(98 missing values generated)
+(98 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   dir_expPC |      1,284    6.850607    2.889996   2.234968   22.31618
+ lndir_expPC |      1,284    1.845345     .393984   .8042271   3.105312
+   lndir_exp |      1,284    16.89345    1.074804   14.50429   19.92366
+(7 real changes made)
+(108 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+      contPC |      1,286    16.91504    25.53572          0   222.6825
+    lncontPC |      1,286    2.017532    2.092512   -20.8897   5.405747
+(177 real changes made)
+(384 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   progrevPC |      1,286    1.679356    10.89921  -.0960812   143.8511
+ lnprogrevPC |      1,282   -4.229236    6.134357  -21.23412   4.968779
+(0 real changes made)
+(101 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+    totrevPC |      1,286    23.92984    35.62028  -.0854333   338.0829
+  lntotrevPC |      1,285    2.496399    1.358602  -3.984691   5.823291
+(176 real changes made)
+(416 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   solicitPC |      1,286    .2188209    .4339765          0   4.850863
+ lnsolicitPC |      1,286   -4.619333    5.858314  -21.74489   1.579157
+(62 real changes made)
+(225 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+  overheadPC |      1,286    .5422457    8.012156          0    287.318
+lnoverheadPC |      1,286   -2.437454    3.945425  -21.76933    5.66059
+(0 real changes made)
+(0 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   own_revPC |      1,284    4.709502    2.042787   1.610469   23.14079
+ lnown_revPC |      1,284    1.474823    .3760905   .4765252   3.141597
+(0 real changes made)
+(1 real change made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   dir_expPC |      1,284    6.850607    2.889996   2.234968   22.31618
+ lndir_expPC |      1,284    1.845345     .393984   .8042271   3.105312
+(96 missing values generated)
+(96 missing values generated)
+(96 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   INCperCAP |      1,286    30366.94    9965.461      12684      66595
+ lnINCperCAP |      1,286     10.2678    .3284335   9.448096   11.10639
+ POP_million |      1,286    5.635316    6.257203     .45369   38.41413
+       lnPOP |      1,286    15.04532    1.030925   13.02517   17.46394
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+          AB |          0
+        year |      1,382    2001.407    7.561549       1987       2014
+       MAJOR |      1,382           6           0          6          6
+       ntee1 |          0
+        FIPS |      1,286    28.98834    15.71271          1         56
+-------------+---------------------------------------------------------
+     own_rev |      1,284    2.65e+07    3.54e+07    1423133   2.90e+08
+     tax_rev |      1,284    1.83e+07    2.50e+07     950482   2.04e+08
+     dir_exp |      1,284    3.91e+07    5.42e+07    1991288   4.50e+08
+         pop |      1,286     5635316     6257203     453690   3.84e+07
+      INCOME |      1,286    1.78e+08    2.28e+08    7550290   1.86e+09
+-------------+---------------------------------------------------------
+   INCperCAP |      1,286    30366.94    9965.461      12684      66595
+        top1 |      1,286    .1612923    .0447799   .0820598   .3606892
+        gini |      1,286     .584384    .0353771   .5152523   .7114252
+       unemp |      1,286    5.712675    1.879561        2.3       13.7
+        CPIU |      1,286    177.9668    32.90486      113.6    232.957
+-------------+---------------------------------------------------------
+        cont |      1,382    7.42e+07    1.38e+08          0   2.20e+09
+     progrev |      1,382     3526675    1.12e+07  -65964.29   1.06e+08
+      invinc |      1,382    1.51e+07    2.28e+07   -4728971   1.69e+08
+     rentexp |      1,382    148108.4    548038.9          0    7699312
+      totrev |      1,382    1.05e+08    1.80e+08  -114512.4   2.66e+09
+-------------+---------------------------------------------------------
+     solicit |      1,382     1053842     2121498          0   2.09e+07
+     compens |      1,382     3451931    7.54e+07          0   2.80e+09
+    overhead |      1,382     3600039    7.54e+07          0   2.80e+09
+ foundations |      1,382    21.07019    25.48945          1        242
+         num |      1,382    21.07019    25.48945          1        242
+-------------+---------------------------------------------------------
+       lnnum |      1,382    2.378334    1.240917          0   5.488938
+       numPC |      1,286    4.834239    4.159513   .0360009   29.95774
+     lnnumPC |      1,286    1.267088    .8230393  -3.324213   3.399788
+      contPC |      1,286    16.91504    25.53572          0   222.6825
+    lncontPC |      1,286    2.017532    2.092512   -20.8897   5.405747
+-------------+---------------------------------------------------------
+      lncont |      1,382    15.55769    5.956648   -4.60517   21.50969
+   progrevPC |      1,286    1.679356    10.89921  -.0960812   143.8511
+ lnprogrevPC |      1,282   -4.229236    6.134357  -21.23412   4.968779
+   lnprogrev |      1,378    9.741481    7.415392   -4.60517   18.47972
+    totrevPC |      1,286    23.92984    35.62028  -.0854333   338.0829
+-------------+---------------------------------------------------------
+  lntotrevPC |      1,285    2.496399    1.358602  -3.984691   5.823291
+    lntotrev |      1,381    16.00286     5.86313   -4.60517   21.70084
+   solicitPC |      1,286    .2188209    .4339765          0   4.850863
+ lnsolicitPC |      1,286   -4.619333    5.858314  -21.74489   1.579157
+   lnsolicit |      1,382    9.381854    7.143843   -4.60517   16.85622
+-------------+---------------------------------------------------------
+  overheadPC |      1,286    .5422457    8.012156          0    287.318
+lnoverheadPC |      1,286   -2.437454    3.945425  -21.76933    5.66059
+  lnoverhead |      1,382    11.41217    5.933272   -4.60517   21.75425
+   own_revPC |      1,284    4.709502    2.042787   1.610469   23.14079
+ lnown_revPC |      1,284    1.474823    .3760905   .4765252   3.141597
+-------------+---------------------------------------------------------
+   lnown_rev |      1,284    16.52293    1.059844   14.16837   19.48436
+   dir_expPC |      1,284    6.850607    2.889996   2.234968   22.31618
+ lndir_expPC |      1,284    1.845345     .393984   .8042271   3.105312
+   lndir_exp |      1,284    16.89345    1.074804   14.50429   19.92366
+ POP_million |      1,286    5.635316    6.257203     .45369   38.41413
+-------------+---------------------------------------------------------
+       lnPOP |      1,286    15.04532    1.030925   13.02517   17.46394
+ lnINCperCAP |      1,286     10.2678    .3284335   9.448096   11.10639
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data
+file CFwo.dta saved
+...
+creating ALL
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data
+NCCS_ntee_state_year loaded
+(275 missing values generated)
+(275 missing values generated)
+(275 missing values generated)
+(428 missing values generated)
+(428 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+      contPC |      1,530    869.4694    2370.356          0   27165.11
+    lncontPC |      1,377    6.136915    1.409226  -.1792727   10.20969
+      lncont |      1,377    21.15554      1.7507   13.22245   24.47121
+(275 missing values generated)
+(428 missing values generated)
+(428 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   progrevPC |      1,530    2383.172    2655.862          0    22243.7
+ lnprogrevPC |      1,377    7.316269     1.52119  -2.222335   10.00981
+   lnprogrev |      1,377    22.33489    1.908361   10.85288   25.69514
+(275 missing values generated)
+(428 missing values generated)
+(428 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+    totrevPC |      1,530    3597.171    5049.228          0   50663.12
+  lntotrevPC |      1,377     7.75906    1.407324   .3275299   10.83295
+    lntotrev |      1,377    22.77769    1.782767   13.40275   25.95875
+(275 missing values generated)
+(430 missing values generated)
+(430 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   solicitPC |      1,530    57.76172    423.7601          0   10198.24
+ lnsolicitPC |      1,375    2.930451     1.62823  -9.163651    9.22997
+   lnsolicit |      1,375    17.95135    1.946513   5.169537   25.20992
+(275 missing values generated)
+(431 missing values generated)
+(431 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+  overheadPC |      1,530    122.7767    899.7013  -4289.776   18072.82
+lnoverheadPC |      1,374    3.642018    1.535811  -3.512115   9.802164
+  lnoverhead |      1,374    18.66162    1.850143    9.92392   25.39365
+(277 missing values generated)
+(277 missing values generated)
+(277 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   own_revPC |      1,528    4.332361    2.129198   1.259339   23.14079
+ lnown_revPC |      1,528    1.363812    .4484958    .230587   3.141597
+   lnown_rev |      1,528    16.36986    1.099856   13.72889   19.48436
+(277 missing values generated)
+(277 missing values generated)
+(277 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   dir_expPC |      1,528    6.258194     3.02919   1.663576   22.31618
+ lndir_expPC |      1,528    1.724024    .4723303   .5089696   3.105312
+   lndir_exp |      1,528    16.73008    1.118606   14.11053   19.92366
+(153 real changes made)
+(428 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+      contPC |      1,530    869.4694    2370.356          0   27165.11
+    lncontPC |      1,530    3.575705    7.808112   -21.7203   10.20969
+(153 real changes made)
+(428 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   progrevPC |      1,530    2383.172    2655.862          0    22243.7
+ lnprogrevPC |      1,530    4.637123    8.174823   -21.7203   10.00981
+(153 real changes made)
+(428 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+    totrevPC |      1,530    3597.171    5049.228          0   50663.12
+  lntotrevPC |      1,530    5.035635    8.287462   -21.7203   10.83295
+(155 real changes made)
+(444 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   solicitPC |      1,530    57.76172    423.7601          0   10198.24
+ lnsolicitPC |      1,530    .6624457    6.938913   -21.7203    9.22997
+(155 real changes made)
+(434 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+  overheadPC |      1,530    122.7767    899.7013  -4289.776   18072.82
+lnoverheadPC |      1,529    1.300053    7.132732   -21.7203   9.802164
+(0 real changes made)
+(0 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   own_revPC |      1,528    4.332361    2.129198   1.259339   23.14079
+ lnown_revPC |      1,528    1.363812    .4484958    .230587   3.141597
+(0 real changes made)
+(2 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   dir_expPC |      1,528    6.258194     3.02919   1.663576   22.31618
+ lndir_expPC |      1,528    1.724024    .4723303   .5089696   3.105312
+(275 missing values generated)
+(275 missing values generated)
+(275 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   INCperCAP |      1,530    27911.35    10799.48       9465      66595
+ lnINCperCAP |      1,530    10.16067    .3958321   9.155356   11.10639
+ POP_million |      1,530    5.416944    6.040979     .45369   38.41413
+       lnPOP |      1,530    15.00376     1.03046   13.02517   17.46394
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+          AB |          0
+        year |      1,805    1998.213    47.85423          1       2014
+       MAJOR |      1,601    4.307933     1.72793          1         10
+       ntee1 |          0
+        FIPS |      1,530    28.96078    15.68196          1         56
+-------------+---------------------------------------------------------
+     own_rev |      1,528    2.37e+07    3.34e+07     917024   2.90e+08
+     tax_rev |      1,528    1.64e+07    2.36e+07     673884   2.04e+08
+     dir_exp |      1,528    3.49e+07    5.10e+07    1343148   4.50e+08
+         pop |      1,530     5416944     6040979     453690   3.84e+07
+      INCOME |      1,530    1.60e+08    2.15e+08    6418440   1.86e+09
+-------------+---------------------------------------------------------
+   INCperCAP |      1,530    27911.35    10799.48       9465      66595
+        top1 |      1,530    .1554854    .0445625    .076124   .3606892
+        gini |      1,530     .574526    .0417725   .4666519   .7114252
+       unemp |      1,530    5.855752    1.958492        2.3       14.8
+        CPIU |      1,530    167.2676    39.00071      103.9    232.957
+-------------+---------------------------------------------------------
+        cont |      1,805    3.19e+09    5.81e+09          0   4.24e+10
+     progrev |      1,805    1.06e+10    1.77e+10          0   1.44e+11
+      invinc |      1,805    4.74e+08    1.13e+09          0   1.68e+10
+     rentexp |      1,805    3.73e+07    7.29e+07          0   7.72e+08
+      totrev |      1,805    1.53e+10    2.55e+10          0   1.88e+11
+-------------+---------------------------------------------------------
+     solicit |      1,805    2.19e+08    2.29e+09          0   8.88e+10
+     compens |      1,805    5.19e+08    5.09e+09  -5.03e+10   1.07e+11
+    overhead |      1,805    5.57e+08    5.09e+09  -5.02e+10   1.07e+11
+  nonprofits |      1,805    3099.348    4522.457          1      38263
+         num |      1,805    3099.348    4522.457          1      38263
+-------------+---------------------------------------------------------
+       lnnum |      1,805    6.242809    3.017329          0   10.55224
+       numPC |      1,530    777.4502    698.5376   .0368973   5936.588
+     lnnumPC |      1,530     5.68331    2.485965  -3.299616    8.68889
+      contPC |      1,530    869.4694    2370.356          0   27165.11
+    lncontPC |      1,530    3.575705    7.808112   -21.7203   10.20969
+-------------+---------------------------------------------------------
+      lncont |      1,805    15.04718    11.06562   -4.60517   24.47121
+   progrevPC |      1,530    2383.172    2655.862          0    22243.7
+ lnprogrevPC |      1,530    4.637123    8.174823   -21.7203   10.00981
+   lnprogrev |      1,805    15.94689    11.58176   -4.60517   25.69514
+    totrevPC |      1,530    3597.171    5049.228          0   50663.12
+-------------+---------------------------------------------------------
+  lntotrevPC |      1,530    5.035635    8.287462   -21.7203   10.83295
+    lntotrev |      1,805    16.28469    11.75318   -4.60517   25.95875
+   solicitPC |      1,530    57.76172    423.7601          0   10198.24
+ lnsolicitPC |      1,530    .6624457    6.938913   -21.7203    9.22997
+   lnsolicit |      1,805    12.57777    9.760676   -4.60517   25.20992
+-------------+---------------------------------------------------------
+  overheadPC |      1,530    122.7767    899.7013  -4289.776   18072.82
+lnoverheadPC |      1,529    1.300053    7.132732   -21.7203   9.802164
+  lnoverhead |      1,804    13.11577    10.04684   -4.60517   25.39365
+   own_revPC |      1,528    4.332361    2.129198   1.259339   23.14079
+ lnown_revPC |      1,528    1.363812    .4484958    .230587   3.141597
+-------------+---------------------------------------------------------
+   lnown_rev |      1,528    16.36986    1.099856   13.72889   19.48436
+   dir_expPC |      1,528    6.258194     3.02919   1.663576   22.31618
+ lndir_expPC |      1,528    1.724024    .4723303   .5089696   3.105312
+   lndir_exp |      1,528    16.73008    1.118606   14.11053   19.92366
+ POP_million |      1,530    5.416944    6.040979     .45369   38.41413
+-------------+---------------------------------------------------------
+       lnPOP |      1,530    15.00376     1.03046   13.02517   17.46394
+ lnINCperCAP |      1,530    10.16067    .3958321   9.155356   11.10639
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data
+file ALL.dta saved
+...
+creating PUB
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data
+NCCS_ntee_state_year loaded
+(432,227 observations deleted)
+(164 missing values generated)
+(164 missing values generated)
+(164 missing values generated)
+(165 missing values generated)
+(165 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+      contPC |      1,371    151.5124    490.9826          0   6260.179
+    lncontPC |      1,370    4.067092    1.499657  -6.425601   8.741964
+      lncont |      1,370    19.09278     1.84046   7.379452    22.9504
+(164 missing values generated)
+(167 missing values generated)
+(167 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   progrevPC |      1,371    64.31143    237.9995  -1.565273   2802.163
+ lnprogrevPC |      1,368    2.902984    1.675005  -6.958582   7.938147
+   lnprogrev |      1,368    17.92994    2.107051   6.772336   21.91164
+(164 missing values generated)
+(165 missing values generated)
+(165 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+    totrevPC |      1,371    253.6834    791.5629  -1.318785   7804.125
+  lntotrevPC |      1,370    4.579738    1.462738  -2.781146   8.962408
+    lntotrev |      1,370    19.60421    1.841219    11.4254   23.19773
+(164 missing values generated)
+(179 missing values generated)
+(179 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   solicitPC |      1,371    11.85483    232.5608          0   8571.247
+ lnsolicitPC |      1,356    .5963179    1.548965   -8.79893   9.056169
+   lnsolicit |      1,356    15.62751    1.885377   5.809575   22.73992
+(164 missing values generated)
+(179 missing values generated)
+(179 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+  overheadPC |      1,371    19.03702    412.8268          0   15249.94
+lnoverheadPC |      1,356    1.032659    1.452766  -7.490651   9.632331
+  lnoverhead |      1,356    16.06905    1.773626   7.475434   25.00324
+(166 missing values generated)
+(166 missing values generated)
+(166 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   own_revPC |      1,369    4.577784    2.065794   1.543665   23.14079
+ lnown_revPC |      1,369    1.438438    .3984677   .4341593   3.141597
+   lnown_rev |      1,369    16.46567    1.072679   14.05649   19.48436
+(166 missing values generated)
+(166 missing values generated)
+(166 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   dir_expPC |      1,369     6.64578    2.935426   2.170894   22.31618
+ lndir_expPC |      1,369    1.805718    .4188292   .7751393   3.105312
+   lndir_exp |      1,369    16.83295    1.088527   14.40772   19.92366
+(1 real change made)
+(168 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+      contPC |      1,371    151.5124    490.9826          0   6260.179
+    lncontPC |      1,371    4.050848    1.615272  -18.20387   8.741964
+(2 real changes made)
+(176 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   progrevPC |      1,371    64.31143    237.9995  -1.565273   2802.163
+ lnprogrevPC |      1,370     2.87257    1.853307  -18.05832   7.938147
+(0 real changes made)
+(167 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+    totrevPC |      1,371    253.6834    791.5629  -1.318785   7804.125
+  lntotrevPC |      1,370    4.579738    1.462738  -2.781146   8.962408
+(15 real changes made)
+(218 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   solicitPC |      1,371    11.85483    232.5608          0   8571.247
+ lnsolicitPC |      1,371    .3815027    2.560318  -20.79652   9.056169
+(15 real changes made)
+(197 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+  overheadPC |      1,371    19.03702    412.8268          0   15249.94
+lnoverheadPC |      1,371    .8182155    2.500406   -19.9847   9.632331
+(0 real changes made)
+(0 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   own_revPC |      1,369    4.577784    2.065794   1.543665   23.14079
+ lnown_revPC |      1,369    1.438438    .3984677   .4341593   3.141597
+(0 real changes made)
+(2 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   dir_expPC |      1,369     6.64578    2.935426   2.170894   22.31618
+ lndir_expPC |      1,369    1.805718    .4188292   .7751393   3.105312
+(164 missing values generated)
+(164 missing values generated)
+(164 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   INCperCAP |      1,371    29507.03    10250.35      10895      66595
+ lnINCperCAP |      1,371    10.23201    .3507699    9.29606   11.10639
+ POP_million |      1,371    5.519893    6.145884     .45369   38.41413
+       lnPOP |      1,371    15.02464      1.0288   13.02517   17.46394
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+          AB |          0
+        year |      1,535    2000.701    8.024886       1987       2014
+       MAJOR |      1,535           6           0          6          6
+       ntee1 |          0
+        FIPS |      1,371    28.94457    15.67614          1         56
+-------------+---------------------------------------------------------
+     own_rev |      1,369    2.54e+07    3.46e+07    1272490   2.90e+08
+     tax_rev |      1,369    1.76e+07    2.45e+07     844627   2.04e+08
+     dir_exp |      1,369    3.74e+07    5.30e+07    1807986   4.50e+08
+         pop |      1,371     5519893     6145884     453690   3.84e+07
+      INCOME |      1,371    1.70e+08    2.23e+08    6890814   1.86e+09
+-------------+---------------------------------------------------------
+   INCperCAP |      1,371    29507.03    10250.35      10895      66595
+        top1 |      1,371     .159104    .0448191    .076124   .3606892
+        gini |      1,371    .5818779    .0364904   .4893938   .7114252
+       unemp |      1,371    5.720569    1.894371        2.3       13.7
+        CPIU |      1,371    174.2245    35.08173      113.6    232.957
+-------------+---------------------------------------------------------
+        cont |      1,535    5.45e+08    1.00e+09          0   9.27e+09
+     progrev |      1,535    2.41e+08    4.71e+08   -6629204   3.28e+09
+      invinc |      1,535    5.79e+07    1.16e+08   -4126311   1.30e+09
+     rentexp |      1,535     3125063     6201386          0   8.14e+07
+      totrev |      1,535    9.22e+08    1.59e+09   -5585284   1.19e+10
+-------------+---------------------------------------------------------
+     solicit |      1,535    2.23e+07    1.94e+08          0   7.51e+09
+     compens |      1,535    7.50e+07    1.86e+09          0   7.22e+10
+    overhead |      1,535    7.81e+07    1.86e+09          0   7.22e+10
+  nonprofits |      1,535    413.7081      514.47          1       4205
+         num |      1,535    413.7081      514.47          1       4205
+-------------+---------------------------------------------------------
+       lnnum |      1,535    5.131979    1.725628          0   8.344029
+       numPC |      1,371    105.5362    138.1527   .4684769   1241.287
+     lnnumPC |      1,371    4.260541    1.054943  -.7582685   7.123904
+      contPC |      1,371    151.5124    490.9826          0   6260.179
+    lncontPC |      1,371    4.050848    1.615272  -18.20387   8.741964
+-------------+---------------------------------------------------------
+      lncont |      1,535    16.54544    7.545581   -4.60517    22.9504
+   progrevPC |      1,371    64.31143    237.9995  -1.565273   2802.163
+ lnprogrevPC |      1,370     2.87257    1.853307  -18.05832   7.938147
+   lnprogrev |      1,534    15.49133    7.280002   -4.60517   21.91164
+    totrevPC |      1,371    253.6834    791.5629  -1.318785   7804.125
+-------------+---------------------------------------------------------
+  lntotrevPC |      1,370    4.579738    1.462738  -2.781146   8.962408
+    lntotrev |      1,534    17.01599    7.682731   -4.60517   23.19773
+   solicitPC |      1,371    11.85483    232.5608          0   8571.247
+ lnsolicitPC |      1,371    .3815027    2.560318  -20.79652   9.056169
+   lnsolicit |      1,535    13.26813    6.733296   -4.60517   22.73992
+-------------+---------------------------------------------------------
+  overheadPC |      1,371    19.03702    412.8268          0   15249.94
+lnoverheadPC |      1,371    .8182155    2.500406   -19.9847   9.632331
+  lnoverhead |      1,535    13.65818    6.843827   -4.60517   25.00324
+   own_revPC |      1,369    4.577784    2.065794   1.543665   23.14079
+ lnown_revPC |      1,369    1.438438    .3984677   .4341593   3.141597
+-------------+---------------------------------------------------------
+   lnown_rev |      1,369    16.46567    1.072679   14.05649   19.48436
+   dir_expPC |      1,369     6.64578    2.935426   2.170894   22.31618
+ lndir_expPC |      1,369    1.805718    .4188292   .7751393   3.105312
+   lndir_exp |      1,369    16.83295    1.088527   14.40772   19.92366
+ POP_million |      1,371    5.519893    6.145884     .45369   38.41413
+-------------+---------------------------------------------------------
+       lnPOP |      1,371    15.02464      1.0288   13.02517   17.46394
+ lnINCperCAP |      1,371    10.23201    .3507699    9.29606   11.10639
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data
+file PUB.dta saved
+...
+creating ST
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data
+NCCS_ntee_state_year loaded
+(477,754 observations deleted)
+(153 missing values generated)
+(153 missing values generated)
+(153 missing values generated)
+(155 missing values generated)
+(155 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+      contPC |      1,370    83.92868    123.2477          0    1345.65
+    lncontPC |      1,368    3.846654    1.429135  -6.425601   7.204633
+      lncont |      1,368    18.87268    1.796338   7.379452   22.87516
+(153 missing values generated)
+(159 missing values generated)
+(159 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   progrevPC |      1,370    16.93777    26.55475  -1.565273   222.8047
+ lnprogrevPC |      1,364    2.098021    1.493041  -9.502425   5.406295
+   lnprogrev |      1,364    17.12818    1.904156   4.830763   21.12427
+(153 missing values generated)
+(154 missing values generated)
+(154 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+    totrevPC |      1,370    126.5978    178.7685  -1.318785   1582.531
+  lntotrevPC |      1,369    4.242546    1.384981  -3.704451    7.36678
+    lntotrev |      1,369    19.26762    1.766918   11.06217   22.97526
+(153 missing values generated)
+(172 missing values generated)
+(172 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   solicitPC |      1,370    9.001755    231.5275          0   8570.643
+ lnsolicitPC |      1,351    .3987536    1.466212  -9.201917   9.056098
+   lnsolicit |      1,351    15.43186    1.827414   5.966319   22.73985
+(153 missing values generated)
+(178 missing values generated)
+(178 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+  overheadPC |      1,370    3.936976    16.84428          0   518.0941
+lnoverheadPC |      1,345    .6696335    1.289072  -7.490651   6.250157
+  lnoverhead |      1,345    15.70909    1.636622   7.475434   22.94723
+(155 missing values generated)
+(155 missing values generated)
+(155 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   own_revPC |      1,368      4.5793    2.065787   1.543665   23.14079
+ lnown_revPC |      1,368    1.438818    .3983643   .4341593   3.141597
+   lnown_rev |      1,368    16.46665    1.072457   14.05649   19.48436
+(155 missing values generated)
+(155 missing values generated)
+(155 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   dir_expPC |      1,368    6.648413    2.934883   2.170894   22.31618
+ lndir_expPC |      1,368    1.806224    .4185635   .7751393   3.105312
+   lndir_exp |      1,368    16.83405    1.088155   14.40772   19.92366
+(2 real changes made)
+(157 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+      contPC |      1,370    83.92868    123.2477          0    1345.65
+    lncontPC |      1,370    3.813162    1.675821  -19.98573   7.204633
+(5 real changes made)
+(172 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   progrevPC |      1,370    16.93777    26.55475  -1.565273   222.8047
+ lnprogrevPC |      1,369    2.023734    1.930766  -18.49748   5.406295
+(0 real changes made)
+(155 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+    totrevPC |      1,370    126.5978    178.7685  -1.318785   1582.531
+  lntotrevPC |      1,369    4.242546    1.384981  -3.704451    7.36678
+(19 real changes made)
+(211 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   solicitPC |      1,370    9.001755    231.5275          0   8570.643
+ lnsolicitPC |      1,370    .1287349    2.705185  -20.79652   9.056098
+(25 real changes made)
+(197 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+  overheadPC |      1,370    3.936976    16.84428          0   518.0941
+lnoverheadPC |      1,370    .3131471    2.912654   -20.4581   6.250157
+(0 real changes made)
+(0 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   own_revPC |      1,368      4.5793    2.065787   1.543665   23.14079
+ lnown_revPC |      1,368    1.438818    .3983643   .4341593   3.141597
+(0 real changes made)
+(2 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   dir_expPC |      1,368    6.648413    2.934883   2.170894   22.31618
+ lndir_expPC |      1,368    1.806224    .4185635   .7751393   3.105312
+(153 missing values generated)
+(153 missing values generated)
+(153 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   INCperCAP |      1,370    29519.16    10244.24      10895      66595
+ lnINCperCAP |      1,370    10.23257    .3502829    9.29606   11.10639
+ POP_million |      1,370    5.522843    6.147158     .45369   38.41413
+       lnPOP |      1,370    15.02524    1.028938   13.02517   17.46394
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+          AB |          0
+        year |      1,523    2000.729    8.028898       1987       2014
+       MAJOR |      1,523           6           0          6          6
+       ntee1 |          0
+        FIPS |      1,370    28.94015    15.68101          1         56
+-------------+---------------------------------------------------------
+     own_rev |      1,368    2.54e+07    3.47e+07    1272490   2.90e+08
+     tax_rev |      1,368    1.76e+07    2.45e+07     844627   2.04e+08
+     dir_exp |      1,368    3.75e+07    5.30e+07    1807986   4.50e+08
+         pop |      1,370     5522843     6147158     453690   3.84e+07
+      INCOME |      1,370    1.71e+08    2.23e+08    6890814   1.86e+09
+-------------+---------------------------------------------------------
+   INCperCAP |      1,370    29519.16    10244.24      10895      66595
+        top1 |      1,370    .1591494    .0448039    .076124   .3606892
+        gini |      1,370    .5819044    .0364905   .4893938   .7114252
+       unemp |      1,370    5.718394     1.89335        2.3       13.7
+        CPIU |      1,370    174.2687    35.05624      113.6    232.957
+-------------+---------------------------------------------------------
+        cont |      1,523    3.98e+08    6.97e+08          0   8.60e+09
+     progrev |      1,523    8.12e+07    1.65e+08   -6629204   1.49e+09
+      invinc |      1,523    4.95e+07    1.10e+08   -4132230   1.29e+09
+     rentexp |      1,523     2528996     5338397          0   7.22e+07
+      totrev |      1,523    5.87e+08    9.84e+08   -5585284   9.51e+09
+-------------+---------------------------------------------------------
+     solicit |      1,523    1.78e+07    1.93e+08          0   7.51e+09
+     compens |      1,523    1.98e+07    2.48e+08          0   9.24e+09
+    overhead |      1,523    2.23e+07    2.48e+08          0   9.24e+09
+  nonprofits |      1,523    326.1786    407.2153          1       3220
+         num |      1,523    326.1786    407.2153          1       3220
+-------------+---------------------------------------------------------
+       lnnum |      1,523    4.912758    1.678042          0   8.077137
+       numPC |      1,370    75.49909    58.86412    .156159   504.9727
+     lnnumPC |      1,370    3.999259    1.049064  -1.856881   6.224504
+      contPC |      1,370    83.92868    123.2477          0    1345.65
+    lncontPC |      1,370    3.813162    1.675821  -19.98573   7.204633
+-------------+---------------------------------------------------------
+      lncont |      1,523    16.48327    7.302067   -4.60517   22.87516
+   progrevPC |      1,370    16.93777    26.55475  -1.565273   222.8047
+ lnprogrevPC |      1,369    2.023734    1.930766  -18.49748   5.406295
+   lnprogrev |      1,522    14.87203    6.871801   -4.60517   21.12427
+    totrevPC |      1,370    126.5978    178.7685  -1.318785   1582.531
+-------------+---------------------------------------------------------
+  lntotrevPC |      1,369    4.242546    1.384981  -3.704451    7.36678
+    lntotrev |      1,522    16.86779     7.37382   -4.60517   22.97526
+   solicitPC |      1,370    9.001755    231.5275          0   8570.643
+ lnsolicitPC |      1,370    .1287349    2.705185  -20.79652   9.056098
+   lnsolicit |      1,523    13.16898    6.573377   -4.60517   22.73985
+-------------+---------------------------------------------------------
+  overheadPC |      1,370    3.936976    16.84428          0   518.0941
+lnoverheadPC |      1,370    .3131471    2.912654   -20.4581   6.250157
+  lnoverhead |      1,523    13.33487    6.707224   -4.60517   22.94723
+   own_revPC |      1,368      4.5793    2.065787   1.543665   23.14079
+ lnown_revPC |      1,368    1.438818    .3983643   .4341593   3.141597
+-------------+---------------------------------------------------------
+   lnown_rev |      1,368    16.46665    1.072457   14.05649   19.48436
+   dir_expPC |      1,368    6.648413    2.934883   2.170894   22.31618
+ lndir_expPC |      1,368    1.806224    .4185635   .7751393   3.105312
+   lndir_exp |      1,368    16.83405    1.088155   14.40772   19.92366
+ POP_million |      1,370    5.522843    6.147158     .45369   38.41413
+-------------+---------------------------------------------------------
+       lnPOP |      1,370    15.02524    1.028938   13.02517   17.46394
+ lnINCperCAP |      1,370    10.23257    .3502829    9.29606   11.10639
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data
+file ST.dta saved
+...
+creating ALLmCF
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data
+NCCS_mCF loaded
+(275 missing values generated)
+(275 missing values generated)
+(275 missing values generated)
+(428 missing values generated)
+(428 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+      contPC |      1,530    855.2519    2356.507          0      27014
+    lncontPC |      1,377    6.117475    1.405167  -.1792727   10.20411
+      lncont |      1,377     21.1361    1.747984   13.22245   24.43719
+(275 missing values generated)
+(428 missing values generated)
+(428 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   progrevPC |      1,530    2381.761    2656.037          0   22243.58
+ lnprogrevPC |      1,377    7.315215    1.521395  -2.222335   10.00981
+   lnprogrev |      1,377    22.33384    1.909159   10.85288   25.69498
+(275 missing values generated)
+(428 missing values generated)
+(428 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+    totrevPC |      1,530    3577.057    5033.634          0   50493.83
+  lntotrevPC |      1,377    7.753038    1.406424   .3275299   10.82961
+    lntotrev |      1,377    22.77166      1.7828   13.40275   25.95565
+(275 missing values generated)
+(430 missing values generated)
+(430 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   solicitPC |      1,530    57.57779    423.7105          0   10197.81
+ lnsolicitPC |      1,375    2.925007    1.626868  -9.163651   9.229928
+   lnsolicit |      1,375     17.9459    1.945065   5.169537   25.20989
+(275 missing values generated)
+(431 missing values generated)
+(431 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+  overheadPC |      1,530    122.3209    899.6728  -4289.996   18072.55
+lnoverheadPC |      1,374    3.635521    1.533989  -3.512115    9.80215
+  lnoverhead |      1,374    18.65512    1.847546    9.92392   25.39363
+(277 missing values generated)
+(277 missing values generated)
+(277 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   own_revPC |      1,528    4.332361    2.129198   1.259339   23.14079
+ lnown_revPC |      1,528    1.363812    .4484958    .230587   3.141597
+   lnown_rev |      1,528    16.36986    1.099856   13.72889   19.48436
+(277 missing values generated)
+(277 missing values generated)
+(277 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   dir_expPC |      1,528    6.258194     3.02919   1.663576   22.31618
+ lndir_expPC |      1,528    1.724024    .4723303   .5089696   3.105312
+   lndir_exp |      1,528    16.73008    1.118606   14.11053   19.92366
+(153 real changes made)
+(428 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+      contPC |      1,530    855.2519    2356.507          0      27014
+    lncontPC |      1,530    3.558209     7.80171   -21.7203   10.20411
+(153 real changes made)
+(428 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   progrevPC |      1,530    2381.761    2656.037          0   22243.58
+ lnprogrevPC |      1,530    4.636174    8.174546   -21.7203   10.00981
+(153 real changes made)
+(428 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+    totrevPC |      1,530    3577.057    5033.634          0   50493.83
+  lntotrevPC |      1,530    5.030215    8.285543   -21.7203   10.82961
+(155 real changes made)
+(444 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   solicitPC |      1,530    57.57779    423.7105          0   10197.81
+ lnsolicitPC |      1,530    .6575532    6.937025   -21.7203   9.229928
+(155 real changes made)
+(434 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+  overheadPC |      1,530    122.3209    899.6728  -4289.996   18072.55
+lnoverheadPC |      1,529    1.294214    7.130461   -21.7203    9.80215
+(0 real changes made)
+(0 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   own_revPC |      1,528    4.332361    2.129198   1.259339   23.14079
+ lnown_revPC |      1,528    1.363812    .4484958    .230587   3.141597
+(0 real changes made)
+(2 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   dir_expPC |      1,528    6.258194     3.02919   1.663576   22.31618
+ lndir_expPC |      1,528    1.724024    .4723303   .5089696   3.105312
+(275 missing values generated)
+(275 missing values generated)
+(275 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   INCperCAP |      1,530    27911.35    10799.48       9465      66595
+ lnINCperCAP |      1,530    10.16067    .3958321   9.155356   11.10639
+ POP_million |      1,530    5.416944    6.040979     .45369   38.41413
+       lnPOP |      1,530    15.00376     1.03046   13.02517   17.46394
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+          AB |          0
+        year |      1,805    1998.213    47.85423          1       2014
+       MAJOR |      1,600       4.115    1.745331          1         10
+       ntee1 |          0
+        FIPS |      1,530    28.96078    15.68196          1         56
+-------------+---------------------------------------------------------
+     own_rev |      1,528    2.37e+07    3.34e+07     917024   2.90e+08
+     tax_rev |      1,528    1.64e+07    2.36e+07     673884   2.04e+08
+     dir_exp |      1,528    3.49e+07    5.10e+07    1343148   4.50e+08
+         pop |      1,530     5416944     6040979     453690   3.84e+07
+      INCOME |      1,530    1.60e+08    2.15e+08    6418440   1.86e+09
+-------------+---------------------------------------------------------
+   INCperCAP |      1,530    27911.35    10799.48       9465      66595
+        top1 |      1,530    .1554854    .0445625    .076124   .3606892
+        gini |      1,530     .574526    .0417725   .4666519   .7114252
+       unemp |      1,530    5.855752    1.958492        2.3       14.8
+        CPIU |      1,530    167.2676    39.00071      103.9    232.957
+-------------+---------------------------------------------------------
+        cont |      1,805    3.13e+09    5.72e+09          0   4.10e+10
+     progrev |      1,805    1.06e+10    1.77e+10          0   1.44e+11
+      invinc |      1,805    4.62e+08    1.12e+09          0   1.67e+10
+     rentexp |      1,805    3.72e+07    7.28e+07          0   7.72e+08
+      totrev |      1,805    1.52e+10    2.54e+10          0   1.87e+11
+-------------+---------------------------------------------------------
+     solicit |      1,805    2.18e+08    2.29e+09          0   8.88e+10
+     compens |      1,805    5.17e+08    5.09e+09  -5.03e+10   1.07e+11
+    overhead |      1,805    5.54e+08    5.09e+09  -5.02e+10   1.07e+11
+  nonprofits |      1,805    3083.216    4501.323          1      38055
+         num |      1,805    3083.216    4501.323          1      38055
+-------------+---------------------------------------------------------
+       lnnum |      1,805    6.238396    3.015478          0   10.54679
+       numPC |      1,530    773.3869    696.5285   .0368973   5926.143
+     lnnumPC |      1,530    5.678737    2.484144  -3.299616   8.687129
+      contPC |      1,530    855.2519    2356.507          0      27014
+    lncontPC |      1,530    3.558209     7.80171   -21.7203   10.20411
+-------------+---------------------------------------------------------
+      lncont |      1,805    15.03235     11.0571   -4.60517   24.43719
+   progrevPC |      1,530    2381.761    2656.037          0   22243.58
+ lnprogrevPC |      1,530    4.636174    8.174546   -21.7203   10.00981
+   lnprogrev |      1,805    15.94609    11.58142   -4.60517   25.69498
+    totrevPC |      1,530    3577.057    5033.634          0   50493.83
+-------------+---------------------------------------------------------
+  lntotrevPC |      1,530    5.030215    8.285543   -21.7203   10.82961
+    lntotrev |      1,805    16.28009    11.75064   -4.60517   25.95565
+   solicitPC |      1,530    57.57779    423.7105          0   10197.81
+ lnsolicitPC |      1,530    .6575532    6.937025   -21.7203   9.229928
+   lnsolicit |      1,805    12.57363    9.758172   -4.60517   25.20989
+-------------+---------------------------------------------------------
+  overheadPC |      1,530    122.3209    899.6728  -4289.996   18072.55
+lnoverheadPC |      1,529    1.294214    7.130461   -21.7203    9.80215
+  lnoverhead |      1,804    13.11082    10.04374   -4.60517   25.39363
+   own_revPC |      1,528    4.332361    2.129198   1.259339   23.14079
+ lnown_revPC |      1,528    1.363812    .4484958    .230587   3.141597
+-------------+---------------------------------------------------------
+   lnown_rev |      1,528    16.36986    1.099856   13.72889   19.48436
+   dir_expPC |      1,528    6.258194     3.02919   1.663576   22.31618
+ lndir_expPC |      1,528    1.724024    .4723303   .5089696   3.105312
+   lndir_exp |      1,528    16.73008    1.118606   14.11053   19.92366
+ POP_million |      1,530    5.416944    6.040979     .45369   38.41413
+-------------+---------------------------------------------------------
+       lnPOP |      1,530    15.00376     1.03046   13.02517   17.46394
+ lnINCperCAP |      1,530    10.16067    .3958321   9.155356   11.10639
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data
+file ALLmCF.dta saved
+...
+creating PUBmCF
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data
+NCCS_mCF loaded
+(4,959,281 observations deleted)
+(164 missing values generated)
+(164 missing values generated)
+(164 missing values generated)
+(165 missing values generated)
+(165 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+      contPC |      1,371    135.6461    478.0388          0   6180.434
+    lncontPC |      1,370    3.890777    1.475846  -6.425601   8.729144
+      lncont |      1,370    18.91646    1.839034   7.379452     22.862
+(164 missing values generated)
+(167 missing values generated)
+(167 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   progrevPC |      1,371    62.73619    237.8876  -1.565273   2802.027
+ lnprogrevPC |      1,368    2.860331    1.676171  -6.958582   7.938098
+   lnprogrev |      1,368    17.88729    2.125321   6.772336   21.89792
+(164 missing values generated)
+(165 missing values generated)
+(165 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+    totrevPC |      1,371    231.2372    778.0718  -1.318785   7709.124
+  lntotrevPC |      1,370    4.424708    1.446587  -2.781146    8.95016
+    lntotrev |      1,370    19.44918    1.849427    11.4254   23.11876
+(164 missing values generated)
+(179 missing values generated)
+(179 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   solicitPC |      1,371    11.64958    232.5494          0   8571.212
+ lnsolicitPC |      1,356    .5334583    1.536521   -8.79893   9.056165
+   lnsolicit |      1,356    15.56465    1.875397   5.809575   22.73992
+(164 missing values generated)
+(179 missing values generated)
+(179 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+  overheadPC |      1,371     18.5284    412.7616          0   15249.85
+lnoverheadPC |      1,356    .9529721    1.443803  -7.490651   9.632325
+  lnoverhead |      1,356    15.98937    1.768802   7.475434   25.00324
+(166 missing values generated)
+(166 missing values generated)
+(166 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   own_revPC |      1,369    4.577784    2.065794   1.543665   23.14079
+ lnown_revPC |      1,369    1.438438    .3984677   .4341593   3.141597
+   lnown_rev |      1,369    16.46567    1.072679   14.05649   19.48436
+(166 missing values generated)
+(166 missing values generated)
+(166 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   dir_expPC |      1,369     6.64578    2.935426   2.170894   22.31618
+ lndir_expPC |      1,369    1.805718    .4188292   .7751393   3.105312
+   lndir_exp |      1,369    16.83295    1.088527   14.40772   19.92366
+(1 real change made)
+(168 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+      contPC |      1,371    135.6461    478.0388          0   6180.434
+    lncontPC |      1,371    3.874662    1.591415  -18.20387   8.729144
+(2 real changes made)
+(175 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   progrevPC |      1,371    62.73619    237.8876  -1.565273   2802.027
+ lnprogrevPC |      1,370    2.829979    1.853661  -18.05832   7.938098
+(0 real changes made)
+(167 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+    totrevPC |      1,371    231.2372    778.0718  -1.318785   7709.124
+  lntotrevPC |      1,370    4.424708    1.446587  -2.781146    8.95016
+(15 real changes made)
+(219 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   solicitPC |      1,371    11.64958    232.5494          0   8571.212
+ lnsolicitPC |      1,371    .3193308    2.547658  -20.79652   9.056165
+(15 real changes made)
+(195 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+  overheadPC |      1,371     18.5284    412.7616          0   15249.85
+lnoverheadPC |      1,371    .7394008    2.488492   -19.9847   9.632325
+(0 real changes made)
+(0 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   own_revPC |      1,369    4.577784    2.065794   1.543665   23.14079
+ lnown_revPC |      1,369    1.438438    .3984677   .4341593   3.141597
+(0 real changes made)
+(2 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   dir_expPC |      1,369     6.64578    2.935426   2.170894   22.31618
+ lndir_expPC |      1,369    1.805718    .4188292   .7751393   3.105312
+(164 missing values generated)
+(164 missing values generated)
+(164 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   INCperCAP |      1,371    29507.03    10250.35      10895      66595
+ lnINCperCAP |      1,371    10.23201    .3507699    9.29606   11.10639
+ POP_million |      1,371    5.519893    6.145884     .45369   38.41413
+       lnPOP |      1,371    15.02464      1.0288   13.02517   17.46394
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+          AB |          0
+        year |      1,535    2000.701    8.024886       1987       2014
+       MAJOR |      1,535           6           0          6          6
+       ntee1 |          0
+        FIPS |      1,371    28.94457    15.67614          1         56
+-------------+---------------------------------------------------------
+     own_rev |      1,369    2.54e+07    3.46e+07    1272490   2.90e+08
+     tax_rev |      1,369    1.76e+07    2.45e+07     844627   2.04e+08
+     dir_exp |      1,369    3.74e+07    5.30e+07    1807986   4.50e+08
+         pop |      1,371     5519893     6145884     453690   3.84e+07
+      INCOME |      1,371    1.70e+08    2.23e+08    6890814   1.86e+09
+-------------+---------------------------------------------------------
+   INCperCAP |      1,371    29507.03    10250.35      10895      66595
+        top1 |      1,371     .159104    .0448191    .076124   .3606892
+        gini |      1,371    .5818779    .0364904   .4893938   .7114252
+       unemp |      1,371    5.720569    1.894371        2.3       13.7
+        CPIU |      1,371    174.2245    35.08173      113.6    232.957
+-------------+---------------------------------------------------------
+        cont |      1,535    4.78e+08    9.17e+08          0   8.49e+09
+     progrev |      1,535    2.38e+08    4.67e+08   -6629204   3.24e+09
+      invinc |      1,535    4.43e+07    1.05e+08   -4460876   1.28e+09
+     rentexp |      1,535     2991718     6119069          0   8.13e+07
+      totrev |      1,535    8.27e+08    1.47e+09   -5585284   1.10e+10
+-------------+---------------------------------------------------------
+     solicit |      1,535    2.13e+07    1.94e+08          0   7.51e+09
+     compens |      1,535    7.19e+07    1.86e+09          0   7.22e+10
+    overhead |      1,535    7.49e+07    1.86e+09          0   7.22e+10
+  nonprofits |      1,535    394.7381    492.6895          1       3963
+         num |      1,535    394.7381    492.6895          1       3963
+-------------+---------------------------------------------------------
+       lnnum |      1,535     5.08366     1.72451          0   8.284757
+       numPC |      1,371    101.0016    136.9683   .4684769   1230.841
+     lnnumPC |      1,371    4.213919    1.046169  -.7582685   7.115453
+      contPC |      1,371    135.6461    478.0388          0   6180.434
+    lncontPC |      1,371    3.874662    1.591415  -18.20387   8.729144
+-------------+---------------------------------------------------------
+      lncont |      1,535    16.38808     7.49212   -4.60517     22.862
+   progrevPC |      1,371    62.73619    237.8876  -1.565273   2802.027
+ lnprogrevPC |      1,370    2.829979    1.853661  -18.05832   7.938098
+   lnprogrev |      1,534    15.45329    7.271995   -4.60517   21.89792
+    totrevPC |      1,371    231.2372    778.0718  -1.318785   7709.124
+-------------+---------------------------------------------------------
+  lntotrevPC |      1,370    4.424708    1.446587  -2.781146    8.95016
+    lntotrev |      1,534    16.87753    7.637835   -4.60517   23.11876
+   solicitPC |      1,371    11.64958    232.5494          0   8571.212
+ lnsolicitPC |      1,371    .3193308    2.547658  -20.79652   9.056165
+   lnsolicit |      1,535     13.2126    6.711358   -4.60517   22.73992
+-------------+---------------------------------------------------------
+  overheadPC |      1,371     18.5284    412.7616          0   15249.85
+lnoverheadPC |      1,371    .7394008    2.488492   -19.9847   9.632325
+  lnoverhead |      1,535    13.58779    6.817909   -4.60517   25.00324
+   own_revPC |      1,369    4.577784    2.065794   1.543665   23.14079
+ lnown_revPC |      1,369    1.438438    .3984677   .4341593   3.141597
+-------------+---------------------------------------------------------
+   lnown_rev |      1,369    16.46567    1.072679   14.05649   19.48436
+   dir_expPC |      1,369     6.64578    2.935426   2.170894   22.31618
+ lndir_expPC |      1,369    1.805718    .4188292   .7751393   3.105312
+   lndir_exp |      1,369    16.83295    1.088527   14.40772   19.92366
+ POP_million |      1,371    5.519893    6.145884     .45369   38.41413
+-------------+---------------------------------------------------------
+       lnPOP |      1,371    15.02464      1.0288   13.02517   17.46394
+ lnINCperCAP |      1,371    10.23201    .3507699    9.29606   11.10639
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data
+file PUBmCF.dta saved
+...
+creating STmCF
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data
+NCCS_mCF loaded
+(5,097,553 observations deleted)
+(151 missing values generated)
+(151 missing values generated)
+(151 missing values generated)
+(153 missing values generated)
+(153 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+      contPC |      1,370    68.05076    108.5174          0   1274.867
+    lncontPC |      1,368    3.626152    1.389686  -6.425601   7.150597
+      lncont |      1,368    18.65218    1.787951   7.379452   22.77951
+(151 missing values generated)
+(157 missing values generated)
+(157 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   progrevPC |      1,370    15.36139    24.05809  -1.565273   222.8047
+ lnprogrevPC |      1,364    2.026955    1.477911  -9.502425   5.406295
+   lnprogrev |      1,364    17.05712    1.918937   4.830763   21.12045
+(151 missing values generated)
+(152 missing values generated)
+(152 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+    totrevPC |      1,370    104.1352    162.7311  -1.318785   1492.773
+  lntotrevPC |      1,369    4.022656    1.360999  -3.704451   7.308391
+    lntotrev |      1,369    19.04773    1.771496   11.06217    22.8756
+(151 missing values generated)
+(170 missing values generated)
+(170 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   solicitPC |      1,370    8.796351    231.5289          0   8570.607
+ lnsolicitPC |      1,351    .3189765    1.448648  -9.201917   9.056094
+   lnsolicit |      1,351    15.35209    1.815368   5.966319   22.73985
+(151 missing values generated)
+(177 missing values generated)
+(177 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+  overheadPC |      1,370    3.427977    14.92142          0   517.8302
+lnoverheadPC |      1,344    .5593894    1.265474  -7.490651   6.249648
+  lnoverhead |      1,344      15.599    1.621176   7.475434   22.94671
+(153 missing values generated)
+(153 missing values generated)
+(153 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   own_revPC |      1,368      4.5793    2.065787   1.543665   23.14079
+ lnown_revPC |      1,368    1.438818    .3983643   .4341593   3.141597
+   lnown_rev |      1,368    16.46665    1.072457   14.05649   19.48436
+(153 missing values generated)
+(153 missing values generated)
+(153 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   dir_expPC |      1,368    6.648413    2.934883   2.170894   22.31618
+ lndir_expPC |      1,368    1.806224    .4185635   .7751393   3.105312
+   lndir_exp |      1,368    16.83405    1.088155   14.40772   19.92366
+(2 real changes made)
+(155 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+      contPC |      1,370    68.05076    108.5174          0   1274.867
+    lncontPC |      1,370    3.592983     1.63788  -19.98573   7.150597
+(5 real changes made)
+(168 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   progrevPC |      1,370    15.36139    24.05809  -1.565273   222.8047
+ lnprogrevPC |      1,369    1.952928    1.916393  -18.49748   5.406295
+(0 real changes made)
+(154 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+    totrevPC |      1,370    104.1352    162.7311  -1.318785   1492.773
+  lntotrevPC |      1,369    4.022656    1.360999  -3.704451   7.308391
+(19 real changes made)
+(210 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   solicitPC |      1,370    8.796351    231.5289          0   8570.607
+ lnsolicitPC |      1,370    .0500642    2.687956  -20.79652   9.056094
+(26 real changes made)
+(195 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+  overheadPC |      1,370    3.427977    14.92142          0   517.8302
+lnoverheadPC |      1,370    .1903175    2.937305   -20.4581   6.249648
+(0 real changes made)
+(0 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   own_revPC |      1,368      4.5793    2.065787   1.543665   23.14079
+ lnown_revPC |      1,368    1.438818    .3983643   .4341593   3.141597
+(0 real changes made)
+(2 real changes made)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   dir_expPC |      1,368    6.648413    2.934883   2.170894   22.31618
+ lndir_expPC |      1,368    1.806224    .4185635   .7751393   3.105312
+(151 missing values generated)
+(151 missing values generated)
+(151 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   INCperCAP |      1,370    29519.16    10244.24      10895      66595
+ lnINCperCAP |      1,370    10.23257    .3502829    9.29606   11.10639
+ POP_million |      1,370    5.522843    6.147158     .45369   38.41413
+       lnPOP |      1,370    15.02524    1.028938   13.02517   17.46394
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+          AB |          0
+        year |      1,521    2000.729    8.033663       1987       2014
+       MAJOR |      1,521           6           0          6          6
+       ntee1 |          0
+        FIPS |      1,370    28.94015    15.68101          1         56
+-------------+---------------------------------------------------------
+     own_rev |      1,368    2.54e+07    3.47e+07    1272490   2.90e+08
+     tax_rev |      1,368    1.76e+07    2.45e+07     844627   2.04e+08
+     dir_exp |      1,368    3.75e+07    5.30e+07    1807986   4.50e+08
+         pop |      1,370     5522843     6147158     453690   3.84e+07
+      INCOME |      1,370    1.71e+08    2.23e+08    6890814   1.86e+09
+-------------+---------------------------------------------------------
+   INCperCAP |      1,370    29519.16    10244.24      10895      66595
+        top1 |      1,370    .1591494    .0448039    .076124   .3606892
+        gini |      1,370    .5819044    .0364905   .4893938   .7114252
+       unemp |      1,370    5.718394     1.89335        2.3       13.7
+        CPIU |      1,370    174.2687    35.05624      113.6    232.957
+-------------+---------------------------------------------------------
+        cont |      1,521    3.31e+08    6.05e+08          0   7.82e+09
+     progrev |      1,521    7.81e+07    1.62e+08   -6629204   1.49e+09
+      invinc |      1,521    3.59e+07    9.96e+07   -4466796   1.28e+09
+     rentexp |      1,521     2397748     5252655          0   7.21e+07
+      totrev |      1,521    4.93e+08    8.60e+08   -5585284   8.60e+09
+-------------+---------------------------------------------------------
+     solicit |      1,521    1.69e+07    1.93e+08          0   7.51e+09
+     compens |      1,521    1.67e+07    2.37e+08          0   9.23e+09
+    overhead |      1,521    1.91e+07    2.37e+08          0   9.24e+09
+  nonprofits |      1,521    307.4629    385.1685          1       2978
+         num |      1,521    307.4629    385.1685          1       2978
+-------------+---------------------------------------------------------
+       lnnum |      1,521    4.857964     1.66681          0   7.999007
+       numPC |      1,370    70.96126    56.88762    .156159   491.0741
+     lnnumPC |      1,370    3.939794     1.03689  -1.856881   6.196595
+      contPC |      1,370    68.05076    108.5174          0   1274.867
+    lncontPC |      1,370    3.592983     1.63788  -19.98573   7.150597
+-------------+---------------------------------------------------------
+      lncont |      1,521    16.31268    7.200307   -4.60517   22.77951
+   progrevPC |      1,370    15.36139    24.05809  -1.565273   222.8047
+ lnprogrevPC |      1,369    1.952928    1.916393  -18.49748   5.406295
+   lnprogrev |      1,520    14.83388    6.822769   -4.60517   21.12045
+    totrevPC |      1,370    104.1352    162.7311  -1.318785   1492.773
+-------------+---------------------------------------------------------
+  lntotrevPC |      1,369    4.022656    1.360999  -3.704451   7.308391
+    lntotrev |      1,520      16.698    7.274328   -4.60517    22.8756
+   solicitPC |      1,370    8.796351    231.5289          0   8570.607
+ lnsolicitPC |      1,370    .0500642    2.687956  -20.79652   9.056094
+   lnsolicit |      1,521    13.12149     6.51874   -4.60517   22.73985
+-------------+---------------------------------------------------------
+  overheadPC |      1,370    3.427977    14.92142          0   517.8302
+lnoverheadPC |      1,370    .1903175    2.937305   -20.4581   6.249648
+  lnoverhead |      1,521    13.24782    6.657724   -4.60517   22.94671
+   own_revPC |      1,368      4.5793    2.065787   1.543665   23.14079
+ lnown_revPC |      1,368    1.438818    .3983643   .4341593   3.141597
+-------------+---------------------------------------------------------
+   lnown_rev |      1,368    16.46665    1.072457   14.05649   19.48436
+   dir_expPC |      1,368    6.648413    2.934883   2.170894   22.31618
+ lndir_expPC |      1,368    1.806224    .4185635   .7751393   3.105312
+   lndir_exp |      1,368    16.83405    1.088155   14.40772   19.92366
+ POP_million |      1,370    5.522843    6.147158     .45369   38.41413
+-------------+---------------------------------------------------------
+       lnPOP |      1,370    15.02524    1.028938   13.02517   17.46394
+ lnINCperCAP |      1,370    10.23257    .3502829    9.29606   11.10639
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data
+file STmCF.dta saved
+.         * end creation of sector-level files
+. }
+
+. ************************************************
+. * Save Files for Diff-in-Diff
+. ************************************************
+. if "`diffndiff'"=="yes" {
+.         foreach set of local DDfiles {
+  2.                 di "..."
+  3.                 di "creating `set' and `set'wo"
+  4.                 clear all
+  5.                 cd "`datadir'"
+  6.                 * load primary dataset
+.                 if "`set'"=="DDD" use NonprofitsMaster
+  7.                 else if "`set'"=="DD" use NCCS_foundations
+  8.                 * Generate Community Foundations Dummy
+.                 gen CF=0
+  9.                 replace CF=1 if nteecc=="T31"
+ 10.                 foreach var of varlist cont progrev totrev solicit overhead own_rev dir_exp {
+ 11.                         gen ln`var'= ln(`var'+.01)
+ 12.                 }               
+ 13.                 gen POP_million=pop/1000000
+ 14.                 gen lnPOP=ln(pop)
+ 15.                 gen lnINCperCAP=ln(INCperCAP)
+ 16.                 sum INCperCAP lnINCperCAP POP_million lnPOP     
+ 17.                 rename state AB
+ 18.                 ***limit firm level file to sample pool****
+.                 keep if year>1992
+ 19.                 *Exclude Kentucky, Montana, North Dakota, Michigan, Kansas and Nebraska becuase they have or had si
+> milar programs
+.                 drop if AB=="KY" | AB=="MT" | AB=="ND" | AB=="MI" | AB=="NE" | AB=="KS"
+ 20.                 *Exclude Arizona, big charitable giving credit
+.                 drop if AB=="AZ" 
+ 21.                 ***limit to Nonprofits w/ at least 3 pre and 3 post years
+.                 sort ein year
+ 22.                 foreach var of varlist lncont lnprogrev lnsolicit {
+ 23.                         gen `var'_temp=0
+ 24.                         foreach yr of numlist 1993/2002 {
+ 25.                                 gen `var'_`yr'=0
+ 26.                                 replace `var'_`yr'=1 if year==`yr' & `var'!=.
+ 27.                                 replace `var'_temp=`var'_temp+`var'_`yr'
+ 28.                         }
+ 29.                         by ein: egen `var'_yrspre=total(`var'_temp)
+ 30.                         drop `var'_temp-`var'_2002
+ 31.                         gen `var'_temp=0
+ 32.                         foreach yr of numlist 2003/2012 {
+ 33.                                 gen `var'_`yr'=0
+ 34.                                 replace `var'_`yr'=1 if year==`yr' & `var'!=.
+ 35.                                 replace `var'_temp=`var'_temp+`var'_`yr'
+ 36.                         }
+ 37.                         by ein: egen `var'_yrspost=total(`var'_temp)
+ 38.                         drop `var'_temp-`var'_2012      
+ 39.                         keep if `var'_yrspre>2 & `var'_yrspost>2
+ 40.                 }
+ 41.                 * end foreach loop
+.                 * Save Dataset with outlier
+.                 save IA_`set'wo, replace
+ 42.                 * Drop CBCBF (outlier) from main CF file 
+.                 drop if ein==421504843
+ 43.                 * Save Datast without outlier
+.                 save IA_`set', replace
+ 44.         }
+...
+creating DD and DDwo
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data
+(29,119 real changes made)
+(358 missing values generated)
+(403 missing values generated)
+(713 missing values generated)
+(2,374 missing values generated)
+(1 missing value generated)
+(366 missing values generated)
+(366 missing values generated)
+(356 missing values generated)
+(356 missing values generated)
+(356 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   INCperCAP |     28,763    34314.75    9105.521      12684      66595
+ lnINCperCAP |     28,763    10.40621    .2780794   9.448096   11.10639
+ POP_million |     28,763    10.95737    9.842201     .45369   38.41413
+       lnPOP |     28,763    15.82126    .9299254   13.02517   17.46394
+(2,088 observations deleted)
+(3,646 observations deleted)
+(345 observations deleted)
+(526 real changes made)
+(526 real changes made)
+(565 real changes made)
+(565 real changes made)
+(625 real changes made)
+(625 real changes made)
+(712 real changes made)
+(712 real changes made)
+(749 real changes made)
+(749 real changes made)
+(807 real changes made)
+(807 real changes made)
+(876 real changes made)
+(876 real changes made)
+(928 real changes made)
+(928 real changes made)
+(969 real changes made)
+(969 real changes made)
+(1,013 real changes made)
+(1,013 real changes made)
+(1,084 real changes made)
+(1,084 real changes made)
+(1,166 real changes made)
+(1,166 real changes made)
+(1,219 real changes made)
+(1,219 real changes made)
+(1,234 real changes made)
+(1,234 real changes made)
+(1,328 real changes made)
+(1,328 real changes made)
+(1,306 real changes made)
+(1,306 real changes made)
+(1,320 real changes made)
+(1,320 real changes made)
+(1,361 real changes made)
+(1,361 real changes made)
+(1,515 real changes made)
+(1,515 real changes made)
+(1,568 real changes made)
+(1,568 real changes made)
+(7,721 observations deleted)
+(440 real changes made)
+(440 real changes made)
+(476 real changes made)
+(476 real changes made)
+(525 real changes made)
+(525 real changes made)
+(599 real changes made)
+(599 real changes made)
+(639 real changes made)
+(639 real changes made)
+(705 real changes made)
+(705 real changes made)
+(767 real changes made)
+(767 real changes made)
+(801 real changes made)
+(801 real changes made)
+(804 real changes made)
+(804 real changes made)
+(806 real changes made)
+(806 real changes made)
+(812 real changes made)
+(812 real changes made)
+(830 real changes made)
+(830 real changes made)
+(833 real changes made)
+(833 real changes made)
+(790 real changes made)
+(790 real changes made)
+(790 real changes made)
+(790 real changes made)
+(761 real changes made)
+(761 real changes made)
+(749 real changes made)
+(749 real changes made)
+(760 real changes made)
+(760 real changes made)
+(772 real changes made)
+(772 real changes made)
+(777 real changes made)
+(777 real changes made)
+(9 observations deleted)
+(441 real changes made)
+(441 real changes made)
+(477 real changes made)
+(477 real changes made)
+(527 real changes made)
+(527 real changes made)
+(600 real changes made)
+(600 real changes made)
+(641 real changes made)
+(641 real changes made)
+(705 real changes made)
+(705 real changes made)
+(767 real changes made)
+(767 real changes made)
+(801 real changes made)
+(801 real changes made)
+(805 real changes made)
+(805 real changes made)
+(805 real changes made)
+(805 real changes made)
+(811 real changes made)
+(811 real changes made)
+(830 real changes made)
+(830 real changes made)
+(833 real changes made)
+(833 real changes made)
+(789 real changes made)
+(789 real changes made)
+(791 real changes made)
+(791 real changes made)
+(762 real changes made)
+(762 real changes made)
+(743 real changes made)
+(743 real changes made)
+(728 real changes made)
+(728 real changes made)
+(658 real changes made)
+(658 real changes made)
+(674 real changes made)
+(674 real changes made)
+(57 observations deleted)
+file IA_DDwo.dta saved
+(0 observations deleted)
+file IA_DD.dta saved
+...
+creating DDD and DDDwo
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\data
+(29,119 real changes made)
+(67,668 missing values generated)
+(70,104 missing values generated)
+(100,022 missing values generated)
+(527,689 missing values generated)
+(105 missing values generated)
+(73,022 missing values generated)
+(73,022 missing values generated)
+(67,139 missing values generated)
+(67,139 missing values generated)
+(67,139 missing values generated)
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+   INCperCAP |  5,527,184    34464.11    9685.688       9465      66595
+ lnINCperCAP |  5,527,184    10.40626    .2933127   9.155356   11.10639
+ POP_million |  5,527,184     11.9705    10.12236     .45369   38.41413
+       lnPOP |  5,527,184    15.90503    .9705029   13.02517   17.46394
+(498,622 observations deleted)
+(350,026 observations deleted)
+(71,120 observations deleted)
+(128,755 real changes made)
+(128,755 real changes made)
+(135,502 real changes made)
+(135,502 real changes made)
+(148,306 real changes made)
+(148,306 real changes made)
+(159,145 real changes made)
+(159,145 real changes made)
+(170,935 real changes made)
+(170,935 real changes made)
+(176,822 real changes made)
+(176,822 real changes made)
+(185,525 real changes made)
+(185,525 real changes made)
+(193,092 real changes made)
+(193,092 real changes made)
+(196,954 real changes made)
+(196,954 real changes made)
+(203,948 real changes made)
+(203,948 real changes made)
+(221,665 real changes made)
+(221,665 real changes made)
+(231,552 real changes made)
+(231,552 real changes made)
+(241,861 real changes made)
+(241,861 real changes made)
+(250,629 real changes made)
+(250,629 real changes made)
+(262,757 real changes made)
+(262,757 real changes made)
+(263,725 real changes made)
+(263,725 real changes made)
+(267,361 real changes made)
+(267,361 real changes made)
+(272,920 real changes made)
+(272,920 real changes made)
+(295,761 real changes made)
+(295,761 real changes made)
+(301,848 real changes made)
+(301,848 real changes made)
+(1,650,600 observations deleted)
+(97,795 real changes made)
+(97,795 real changes made)
+(104,271 real changes made)
+(104,271 real changes made)
+(115,699 real changes made)
+(115,699 real changes made)
+(125,745 real changes made)
+(125,745 real changes made)
+(138,134 real changes made)
+(138,134 real changes made)
+(145,233 real changes made)
+(145,233 real changes made)
+(154,016 real changes made)
+(154,016 real changes made)
+(159,050 real changes made)
+(159,050 real changes made)
+(155,665 real changes made)
+(155,665 real changes made)
+(154,502 real changes made)
+(154,502 real changes made)
+(160,651 real changes made)
+(160,651 real changes made)
+(160,352 real changes made)
+(160,352 real changes made)
+(160,817 real changes made)
+(160,817 real changes made)
+(157,913 real changes made)
+(157,913 real changes made)
+(154,772 real changes made)
+(154,772 real changes made)
+(148,638 real changes made)
+(148,638 real changes made)
+(143,878 real changes made)
+(143,878 real changes made)
+(142,657 real changes made)
+(142,657 real changes made)
+(140,804 real changes made)
+(140,804 real changes made)
+(140,244 real changes made)
+(140,244 real changes made)
+(453 observations deleted)
+(97,809 real changes made)
+(97,809 real changes made)
+(104,269 real changes made)
+(104,269 real changes made)
+(115,719 real changes made)
+(115,719 real changes made)
+(125,748 real changes made)
+(125,748 real changes made)
+(138,138 real changes made)
+(138,138 real changes made)
+(145,241 real changes made)
+(145,241 real changes made)
+(154,020 real changes made)
+(154,020 real changes made)
+(159,050 real changes made)
+(159,050 real changes made)
+(155,673 real changes made)
+(155,673 real changes made)
+(154,528 real changes made)
+(154,528 real changes made)
+(160,665 real changes made)
+(160,665 real changes made)
+(160,356 real changes made)
+(160,356 real changes made)
+(160,837 real changes made)
+(160,837 real changes made)
+(157,936 real changes made)
+(157,936 real changes made)
+(154,800 real changes made)
+(154,800 real changes made)
+(148,675 real changes made)
+(148,675 real changes made)
+(141,321 real changes made)
+(141,321 real changes made)
+(133,439 real changes made)
+(133,439 real changes made)
+(103,968 real changes made)
+(103,968 real changes made)
+(102,267 real changes made)
+(102,267 real changes made)
+(14,682 observations deleted)
+file IA_DDDwo.dta saved
+(0 observations deleted)
+file IA_DDD.dta saved
+.         ***End loop over datasets********************
+. }
+
+. 
+. 
+. 
+. 
+. 
+end of do-file
+
+. **************************************************
+. * Analysis of Endow Iowa Tax Credit
+. **************************************************
+. cd "`projectdir'\ctcs_dofiles"
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\ctcs_dofiles
+
+. if "`Iowa'"=="yes" do CTC_IA.do
+
+. 
+. 
+. **************************************************
+. * Close the log, end the file
+. **************************************************
+. macro drop _all
+
+. capture log close
