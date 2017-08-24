@@ -37,7 +37,7 @@ cd "`projectdir'\ctcs_dofiles"
 **************************************************
 * Create Log File
 **************************************************
-global logthis "no" 	//change to "no" if no log file is desired
+global logthis "yes" 	//change to "no" if no log file is desired
 global makecopy "no"   //change to "no" if copies of do files are desired
 local time : di %tcCCYYNNDD!_HHMMSS clock("`c(current_date)'`c(current_time)'","DMYhms")
 if "$makecopy"=="yes"{
