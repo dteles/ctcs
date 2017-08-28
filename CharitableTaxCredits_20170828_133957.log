@@ -1,0 +1,843 @@
+------------------------------------------------------------------------------------------------------------------------
+      name:  <unnamed>
+       log:  D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\ctcs_dofiles\CharitableTaxCredits_20170828_133957.log
+  log type:  text
+ opened on:  28 Aug 2017, 13:39:57
+.         pwd
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\ctcs_dofiles
+.         display "$S_DATE $S_TIME"
+28 Aug 2017 13:39:57
+. }
+
+. di "-------------------------"
+-------------------------
+
+. di "`c(username)' `c(current_date)'"
+dteles 28 Aug 2017
+
+. di "`c(current_time)'"
+13:39:57
+
+. di "-------------------------"
+-------------------------
+
+. 
+. **************************************************
+. * Net Installs ensure all programs are loaded
+. **************************************************
+. /* right now, we don't need these
+> ssc install sutex
+> ssc install estout, replace
+> ssc install mat2txt
+> net install outtable, from("http://fmwww.bc.edu/RePEc/bocode/o/") replace
+> ssc install egenmore, replace
+> ssc install spmap, replace
+> ssc install corrtex
+> ssc install avar, replace
+> ssc install weakiv, replace
+> ssc install ivreg2, replace
+> ssc install xtivreg2, replace
+> ssc install ranktest, replace
+> ssc install synth, replace
+> ssc install matsave
+> ssc install labutil, replace
+> ssc install carryforward, replace
+> ssc install unique, replace
+> */
+. 
+. **************************************************
+. * Create Datasets
+. **************************************************
+. cd "`projectdir'\ctcs_dofiles"
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\ctcs_dofiles
+
+. if "`makedata'"=="yes" do CTC_makedata.do
+
+. **************************************************
+. * Analysis of Endow Iowa Tax Credit
+. **************************************************
+. cd "`projectdir'\ctcs_dofiles"
+D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\ctcs_dofiles
+
+. if "`Iowa'"=="yes" do CTC_IA.do
+
+. *************************************************
+. * Charitable Tax Credits Analysis
+. * CTC_IA.do
+. * 8/28/2017, version 2
+. * Dan Teles
+. *************************************************
+. * this file contains the analysis for Endow Iowa
+. * it can be called from CharitableTaxCredits.do
+. **************************************************
+. * Directories
+. **************************************************
+. local projectdir="D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits"
+
+. local datadir="D:\Users\dteles\Documents\CharitableTaxCredits\data"
+
+. local output="`projectdir'\output"
+
+. local project="IA"
+
+. **************************************************
+. * Locals to define which sections to run
+. **************************************************
+. local sumstats="no"
+
+. local training="yes"
+
+. local robust="no"
+
+. local more_aggs="no"
+
+. local SCM="no"
+
+. local placebo="no"
+
+. local inf="no"
+
+. local tables="no"
+
+. local graphs="no"
+
+. local DID="no"
+
+. local regtables="no"
+
+. **************************************************
+. * Locals Iteration Lists
+. **************************************************
+. local prime_agg `" "CF" "' // robustness checks run for this iteration
+
+. local robustchecks1 `" "wo" "xp" "' //robustness checks that require training loop
+
+. local robustchecks2 `" "nst" "' //robustness checks that don't require training loop
+
+. local robust_sumstats `" "wo" "nst" "' //robustness checks for which sumstats are tabulated
+
+. /*      wo - with outlier - CBCBF not dropped
+>         xp - excluding population - population not included as a predictor variable
+>         nst - neighborstates - donor pool restricted to neighboring states
+> */
+. local neighborstates `" "NE" "SD" "MN" "WI" "IL" "MO" "'
+
+. local big_aggs `" "ALL" "PUB" "ST" "' /*PUB is NTEE cats RSTUVW, ST is cats ST*/
+
+. local spill_aggs `" "ALLmCF" "PUBmCF" "STmCF" "' /*ALLmCF, PUBmCF, and STmCF, are ALL, PUB, and ST without CFs*/
+
+. local DDsets `" "DD" "DDwo" "DDD" "DDDwo""'
+
+. local reglist `" "unbal" "'
+
+. local reglist `" `reglist' "bal9807" "'
+
+. * Locals: Other Options
+. local besttrainyear=1994
+
+. * locals to determine which functional forms to run
+. local formlist1 LNPC
+
+. local formlist2 LNPC LN PC
+
+. ***************************************
+. * Summary Statistics 
+. ***************************************
+. * Define Datasets for which Summary Statistics are calculated
+. local sum_sets `" `prime_agg' "' //primary dataset
+
+. * Add "big" and "spillover" datasets
+. if "`more_aggs'"=="yes" {
+.         local sum_sets `" `sum_sets' `big_aggs' `spill_aggs' "'
+. }
+
+. * Add datasets used in robustness checks
+. if "`robust'"=="yes" {
+.         foreach agg of local prime_agg {
+  2.                 foreach sfx of local robust_sumstats {
+  3.                         local robust_sets `" `robust_sets' "`agg'`sfx'" "'
+  4.                 }
+  5.         }       
+. }
+
+. local sum_sets `" `sum_sets' `robust_sets' "'
+
+. di `sum_sets'
+CF
+
+. *if "`individualNPs'"=="yes" {
+. /* Left Blank, No Org SCM for IOWA */
+. *}
+. * Define Datasets for Diff-in-Diff Analysis
+. if "`DID'"=="yes" local sum_sets `" `sum_sets' `DDsets' "'
+
+. * List Datesets
+. di "SUMSTATS for : "
+SUMSTATS for : 
+
+. di `sum_sets'
+CF
+
+. if "`sumstats'"=="yes" {
+.         foreach set of local sum_sets {
+  2.                 di "-------------------------"
+  3.                 di "Summary Statistics for `set'"
+  4.                 di "-------------------------"
+  5.                 foreach u of local DDsets {
+  6.                         if "`set'"=="`u'" {
+  7.                                 local DDset "yes"
+  8.                         }
+  9.                 }
+ 10.                 * Define Variables
+.                 local varlistBASE cont INCperCAP progrev solicit POP_million gini top1
+ 11.                 local varlistLN lncont lnINCperCAP lnprogrev lnsolicit lnPOP gini top1
+ 12.                 local varlistPC contPC INCperCAP progrevPC solicitPC POP_million gini top1
+ 13.                 local varlistLNPC lncontPC lnINCperCAP lnprogrevPC lnsolicitPC lnPOP gini top1
+ 14.                 local varnames `" "Contributions" "Income" "Program_Revenue" "Fundraising" "Population" "Gini" "Top
+> _1_Percent" "'
+ 15.                 * Add number of foundations to varlist baseline
+.                 if "`set'"=="CF" | "`set'"=="CFwo" | "`set'"=="CFnst" {
+ 16.                         local varlistBASE `varlistBASE' foundations
+ 17.                         local varlistLN `varlistLN' lnnum
+ 18.                         local varlistPC `varlistPC' numPC
+ 19.                         local varlistLNPC `varlistLNPC' lnnumPC                 
+ 20.                         local varnames `" `varnames' "Foundations" "'
+ 21.                 }
+ 22.                 else if "`DDset'"=="yes" {
+ 23.                         local varlistBASE `varlistBASE' 
+ 24.                         local varlistLN `varlistLN' 
+ 25.                         local varlistPC `varlistPC' 
+ 26.                         local varlistLNPC `varlistLNPC'                         
+ 27.                         local varnames `" `varnames' "'         
+ 28.                 }
+ 29.                 else {
+ 30.                         local varlistBASE `varlistBASE' nonprofits
+ 31.                         local varlistLN `varlistLN' lnnum
+ 32.                         local varlistPC `varlistPC' numPC
+ 33.                         local varlistLNPC `varlistLNPC' lnnumPC                 
+ 34.                         local varnames `" `varnames' "Nonprofits" "'
+ 35.                 }
+ 36.                 * Define which functional forms to summarize
+.                 if "`set'"==`prime_agg' {
+ 37.                         local formlist BASE `formlist2' // formlist2 includes PC, LNPC, ln
+ 38.                 }
+ 39.                 di "`formlist'"
+ 40.                 else if "`DDset'"=="yes" {
+ 41.                         local formlist BASE LN
+ 42.                 }
+ 43.                 else local formlist PC
+ 44.                 * Load Datasets
+.                 clear all
+ 45.                 qui cd "`datadir'"
+ 46.                 if "`set'"=="CF" | "`set'"=="CFnst" {
+ 47.                         use CF
+ 48.                         di "load CF"                    
+ 49.                 }
+ 50.                 else if "`set'"=="CFwo" {
+ 51.                         use CFwo
+ 52.                         di "load CFwo"
+ 53.                 }
+ 54.                 else if "`DDset'"=="yes"{
+ 55.                         use IA_`set'
+ 56.                         di "load IA_`set'"
+ 57.                 }
+ 58.                 else {
+ 59.                         use `set'
+ 60.                         di "load `set'"
+ 61.                 }
+ 62.                 * Reduce to 1993 to 2012
+.                 keep if year>1992
+ 63.                 keep if year<2013
+ 64.                 qui cd "`output'\tempfiles"
+ 65.                 * Summarize
+.                 sum
+ 66.                 * Begin loop over functional form
+.                 foreach fform of local formlist {       
+ 67.                         * summary statistics for whole country          
+.                         di "Summary Statistics for US `set': `fform' variables"
+ 68.                         di "`varlist`fform''"
+ 69.                         sum
+ 70.                         tabstat `varlist`fform'', s(mean sd) save
+ 71.                         matrix C=r(StatTotal)'
+ 72.                         matrix coln C ="US_Mean" "US_Std_deviation"
+ 73.                         matrix rown C = `varnames' 
+ 74.                         * Neighbor State Sample Only: Reduce to panel of neighboring states
+.                         if "`set'"=="CFnst" {
+ 75.                                 gen keeper=0
+ 76.                                 replace keeper=1 if AB=="IA"
+ 77.                                 foreach ST of local neighborstates {
+ 78.                                         replace keeper=1 if AB=="`ST'"
+ 79.                                 }
+ 80.                                 keep if keeper==1
+ 81.                                 drop keeper
+ 82.                         }
+ 83.                         * Begin Commands that do not apply to DD sets
+.                         if "`DDset'"!="yes" {
+ 84.                                 * Export data for Summary Graph, Iowa vs. US
+.                                 preserve
+ 85.                                 qui gen IA=0
+ 86.                                 qui replace IA=1 if AB=="IA"
+ 87.                                 qui gen NOT_IA=1-IA     
+ 88.                                 collapse (mean) `varlist`fform'', by(IA NOT_IA year)
+ 89.                                 save IA_`set'vsUS_`fform', replace
+ 90.                                 restore
+ 91.                                 preserve
+ 92.                                 * Define Sample Pool
+.                                 di "define sample pool"
+ 93.                                 * Exclude Kentucky, Montana, North Dakota, Michigan, Kansas and Nebraska becuase th
+> ey have or had similar programs
+.                                 drop if AB=="KS" | AB=="KY" | AB=="MI" | AB=="MT" | AB=="ND" | AB=="NE" 
+ 94.                                 * Exclude Iowa, big charitable giving credit
+.                                 drop if AB=="AZ"
+ 95.                                 * Exclude Hawaii and Utah, missing years.
+.                                 drop if AB=="HI" | AB=="UT" 
+ 96.                                 * Exclude Wyoming and Deleware, years with zero contributions
+.                                 drop if AB=="WY" | AB=="DE"
+ 97.                         }
+ 98.                         * end commands that do not apply to DD sets
+.                         * Summary statistics for Iowa
+.                         sum `varlist`fform'' if AB=="IA"
+ 99.                         tabstat `varlist`fform'' if AB=="IA", s(mean sd) save
+100.                         matrix A=r(StatTotal)'
+101.                         matrix coln A ="IA_Mean" "IA_Std_deviation"
+102.                         matrix rown A = `varnames'
+103.                         matrix list A
+104.                         * Summary statistics for sample pool or Controls
+.                         if "`DDset'"=="yes" {
+105.                                 di "Summary Statistics for Control Group `set': `fform' variables"
+106.                                 local Bcoln `" "Control_Mean" "Control_SD" "'
+107.                         }
+108.                         else {
+109.                                 di "Summary Statistics for DONOR STATES `set': `fform' variables"
+110.                                 local Bcoln `" "Pool_Mean" "Pool_Std_deviation" "'
+111.                         }                       
+112.                                 sum `varlist`fform''  if AB!="IA"
+113.                                 tabstat `varlist`fform''  if AB!="IA", s(mean sd) save
+114.                                 matrix B=r(StatTotal)'
+115.                                 matrix coln B = `Bcoln'
+116.                                 matrix rown B = `varnames' 
+117.                         * Collapse data for Summary Graph, Iowa vs. US vs. Sample Pool
+.                         if "`DDset'"!="yes"{
+118.                                 drop if AB=="IA"
+119.                                 gen POOL=1
+120.                                 collapse (mean) `varlist`fform'' POOL, by(year)
+121.                                 append using IA_`set'vsUS_`fform'
+122.                                 save IA_`set'vsUS_`fform', replace
+123.                                 restore
+124.                         }
+125.                         * Export Summary Statisitcs
+.                         matrix IA_sumstats_`set'_`fform'= [A , B , C ]
+126.                         matrix list IA_sumstats_`set'_`fform'
+127.                         matsave IA_sumstats_`set'_`fform', saving replace
+128.                         preserve
+129.                         use IA_sumstats_`set'_`fform', replace
+130.                         export excel using "`output'\tables\IA_SUMSTATS.xls", firstrow(variables) sheet("`set'_`ffo
+> rm'") sheetreplace
+131.                         matrix drop _all
+132.                         restore
+133.                 }       
+134.                 * end loop over functional form
+.         }
+.         * End Loop over sum_sets
+. }
+
+. **************************************************
+. * Synthetic Control Analysis
+. **************************************************
+. * Define which iterations to run
+. local agglist `" `prime_agg' "' //primary dataset
+
+. if "`more_aggs'"=="yes" {
+.         local agglist `" `agglist' `big_aggs' `spill_aggs' "'
+. }
+
+. local iterate `" `agglist' "'
+
+. * Add iterations for robustness checks
+. if "`robust'"=="yes" {
+.         foreach agg of local prime_agg {
+  2.                 foreach sfx of local robustchecks1 {
+  3.                         local iterate `" `iterate' "`agg'`sfx'" "'
+  4.                         local suffixlist `" `suffixlist' "`sfx'" "'
+  5.                 }
+  6.         }       
+. }
+
+. di ""
+
+
+. di "------------------------------------------------------"
+------------------------------------------------------
+
+. di "Calibration to determine predictor variables for "
+Calibration to determine predictor variables for 
+
+. di "  the following iterations"
+  the following iterations
+
+. di `iterate'
+CF
+
+. di "-----------------------------------------------------"
+-----------------------------------------------------
+
+. **************************************************
+. * Begin Training Loop
+. **************************************************
+. * Training loop uses the pre-intervention period 
+. if "`training'"=="yes" {
+.         * loop over each analysis
+.         foreach pass of local iterate {
+  2.                 di ""
+  3.                 di "--------------------------------------------------------"
+  4.                 di "Begin Training Sections for `pass':"
+  5.                 * Define Treatment Years
+.                 local year1 = 1990
+  6.                 local lastyear = 1998
+  7.                 local calibyears `besttrainyear'
+  8.                 * Display calibration year
+.                 di "Calibration using treatmentyears: `calibyears'"
+  9.                 * Define local formlist
+.                 local formlist `formlist1'
+ 10.                 * Expand formlist for robustness check of baseline
+.                 if "`pass'"==`prime_agg' {
+ 11.                         local formlist `formlist2' // formlist2 includes PC, LNPC, ln
+ 12.                 }
+ 13.                 di "Functional forms include: `formlist'"
+ 14.                 * loop over training treatyear options
+.                 foreach treatyear of numlist `calibyears' {
+ 15.                         local lastpreyear = `treatyear'-1
+ 16.                         foreach n of numlist 2/10 {
+ 17.                                 local year`n' = `year1'+`n'-1
+ 18.                         }
+ 19.                         * loop over functional form
+.                         foreach fform of local formlist {
+ 20.                                 di "---------------------------------"
+ 21.                                 di "Training Section for `pass' `fform' "       
+ 22.                                 di "Year 1 = `year1', Treatment Year = `treatyear'"
+ 23.                                 di "-------------------------------"                            
+ 24.                                 * define locals for variables of interest
+.                                 if "`fform'"=="PC"      {
+ 25.                                         foreach var in cont progrev totrev solicit num {
+ 26.                                                 local `var' `var'PC
+ 27.                                         }
+ 28.                                         local INCperCAP INCperCAP
+ 29.                                 }
+ 30.                                 if "`fform'"=="LN"      {
+ 31.                                         foreach var in cont progrev totrev solicit num INCperCAP {
+ 32.                                                 local `var' ln`var'
+ 33.                                         }                               
+ 34.                                 }                                       
+ 35.                                 if "`fform'"=="LNPC"    {
+ 36.                                         foreach var in cont progrev totrev solicit num {
+ 37.                                                 local `var' ln`var'PC
+ 38.                                         }
+ 39.                                         local INCperCAP lnINCperCAP                                     
+ 40.                                 }
+ 41.                                 * define predictor variable list
+.                                 local predvarlist `cont' `progrev' `totrev' `solicit' `num' `INCperCAP' gini top1
+ 42.                                 * clear out predvaryear locals
+.                                 foreach yr of numlist 1/10 {
+ 43.                                         foreach predvar of local predvarlist  {
+ 44.                                                 local `predvar'`n' ""
+ 45.                                         }
+ 46.                                 }
+ 47.                                 * define predvar year locals 
+.                                 foreach yr of numlist `year1'/`lastpreyear' {
+ 48.                                         local n = `yr'-`year1'+1
+ 49.                                                 foreach predvar of local predvarlist  {
+ 50.                                                 local `predvar'`n' `predvar'(`yr')
+ 51.                                         }
+ 52.                                 }
+ 53.                                 foreach predvar of local predvarlist {
+ 54.                                         local `predvar'L `predvar'(`lastpreyear')
+ 55.                                 }
+ 56.                                 * Define locals for robustness check excluding population
+.                                 if "`pass'"=="`prime_agg'xp" {
+ 57.                                         local pop = ""
+ 58.                                         local pop1 = ""
+ 59.                                         local popL = ""
+ 60.                                 }
+ 61.                                 * Define locals for baseline with population
+.                                 else {
+ 62.                                         local pop lnPOP 
+ 63.                                         local pop1 lnPOP(`year1')
+ 64.                                         local popL lnPOP(`lastpreyear')
+ 65.                                 }       // populaiton variable always in log form
+ 66.                                 * Define local for which outcome variables are of interest
+.                                 local outvars `cont' `num'  //Contributions and Number of Nonprofits
+ 67.                                 if "`pass'"==`prime_agg' {
+ 68.                                         local outvars `cont' `num' `solicit' 
+ 69.                                 }
+ 70.                                 * Define locals for cont predictor variables 
+.                                 include synth_setup.doh
+ 71. di "`pass'"                             
+ 72. di "`S10'"
+ 73. blurg
+ 74.                                 * Display output
+.                                 di "`fform' metrics are: `outvars'"
+ 75.                                 di "Pretreatment Period runs `year1' to `lastpreyear'.  Posttreatment Period runs `
+> treatyear' to `lastyear'"
+ 76.                                 di "--------------------------------------"                     
+ 77.                                 * Load and prepare data
+.                                 clear all
+ 78.                                 qui cd "`datadir'"              
+ 79.                                 if "`pass'"=="CFxp" {
+ 80.                                         use CF
+ 81.                                         di "load CF"
+ 82.                                 }
+ 83.                                 else {
+ 84.                                         use `pass'
+ 85.                                         di "load `pass'"
+ 86.                                 }       
+ 87.                                 cd "`output'\tempfiles"
+ 88.                                 * Keep Years Needed
+.                                 keep if year>1988
+ 89.                                 if `year1'==1990 {
+ 90.                                         drop if year==1989
+ 91.                                 }       
+ 92.                                 keep if year<1999
+ 93.                                 * Remove states with missing years
+.                                 di "Removing observations with missing data"
+ 94.                                 foreach var of varlist INCperCAP POP progrevPC solicitPC gini top1 contPC numPC lnc
+> ont lnprogrev lnsolicit {
+ 95.                                         drop if `var'==.
+ 96.                                 }
+ 97.                                 foreach var of varlist INCperCAP POP contPC lncont numPC {
+ 98.                                         drop if `var'==0
+ 99.                                 }
+100.                                 sort AB year
+101.                                 by AB: gen N=_N
+102.                                 if `year1'==1989 {
+103.                                         keep if N==10
+104.                                 }
+105.                                 if `year1'==1990 {
+106.                                         keep if N==9
+107.                                 }                       
+108.                                 * Generate local for Org-by-State Observations
+.                                 encode AB, gen(stco)
+109.                                 labmask stco, values(AB)
+110.                                 qui sum stco
+111.                                 local Numstates=r(max)
+112.                                 di "------"
+113.                                 di "There are `Numstates'  observations in the `pass' to `treatyear' training group
+> "
+114.                                 di "------"
+115.                                 ***********************************
+.                                 * Synthetic Control Training Loop
+.                                 ***********************************
+.                                 * Begin loop over Predvar Sets
+.                                 forvalues j = 1/10 {
+116.                                         * begin quietly running iterative SCM   
+.                                         di "Predvars: (list `j')"
+117.                                         di "`C`j''"     
+118.                                         tempname resmat`j'_`cont'
+119.                                         tempname fitmat`j'_`cont'
+120.                                         tempname fit2mat`j'_`cont'
+121.                                         di "`N`j''"
+122.                                         tempname resmat`j'_`num'                        
+123.                                         tempname fitmat`j'_`num'        
+124.                                         tempname fit2mat`j'_`num'       
+125.                                         if "`pass'"==`prime_agg' {
+126.                                                 di "`S`j''"
+127.                                                 tempname resmat`j'_`solicit'                    
+128.                                                 tempname fitmat`j'_`solicit'    
+129.                                                 tempname fit2mat`j'_`solicit'                                   
+130.                                         }
+131.                                         * Begin loop over each state 
+.                                         forvalues i = 1/`Numstates' {
+132.                                                 qui { 
+133.                                                         *define time series set
+.                                                         tsset stco year
+134.                                                         foreach outcome of local outvars {
+135.                                                                 **Define Predvars****
+.                                                                 if "`outcome'" == "`cont'" {
+136.                                                                         local predictors   `C`j''
+137.                                                                 }
+138.                                                                 if "`outcome'" == "`solicit'" {
+139.                                                                         local predictors  `S`j''
+140.                                                                 }
+141.                                                                 if "`outcome'" == "`num'" {
+142.                                                                         local predictors `N`j''
+143.                                                                 }                                               
+144.                                                                 * synthetic control command:
+.                                                                 noi capture synth `outcome' `predictors', trunit(`i') 
+> trperiod(`treatyear') resultsperiod(`treatyear'(1)`lastyear') `scmopts'
+145.                                                                 if _rc !=0 { //If error then run without nested opt
+> ion
+146.                                                                         noi di "The error message for outcome `outc
+> ome', predvarslist `j',  control unit `i' is " _rc
+147.                                                                         noi synth `outcome' `predictors', trunit(`i
+> ') trperiod(`treatyear') resultsperiod(`treatyear'(1)`lastyear') 
+148.                                                                 }                                                  
+>              
+149.                                                                 * save matrix of RMSPEs
+.                                                                 matrix DIFF=e(Y_treated)-e(Y_synthetic)
+150.                                                                 matrix TREAT = e(Y_treated)
+151.                                                                 matrix SYNTH = e(Y_synthetic)
+152.                                                                 matrix BASE=.1*e(Y_treated)                        
+>                                              
+153.                                                                 matrix SSEM = DIFF' * DIFF
+154.                                                                 scalar SSE = SSEM[1,1]  
+155.                                                                 local yrspost = `lastyear'-`treatyear'+1
+156.                                                                 scalar postRMSE = sqrt(SSE/`yrspost')              
+>                      
+157.                                                                 matrix `resmat`j'_`outcome'' = [nullmat(`resmat`j'_
+> `outcome'') \ postRMSE]      
+158.                                                                 * back out not-logged in if in log form, logged if 
+> not in log form
+.                                                                 if "`fform'"=="LNPC" | "`fform'"=="LN" {
+159.                                                                         matrix DIFF_ALT=J(`yrspost',1,0)
+160.                                                                         matrix BASE_ALT=J(`yrspost',1,0)
+161.                                                                         forvalues n = 1/`yrspost' {
+162.                                                                                  matrix DIFF_ALT[`n',1]= exp(TREAT[
+> `n',1])-exp(SYNTH[`n',1])
+163.                                                                                  matrix BASE_ALT[`n',1]= exp(TREAT[
+> `n',1])*.1
+164.                                                                         }
+165.                                                                 }
+166.                                                                 if "`fform'"=="PC" {
+167.                                                                         matrix DIFF_ALT=J(`yrspost',1,0)
+168.                                                                         matrix BASE_ALT=J(`yrspost',1,0)
+169.                                                                         forvalues n = 1/`yrspost' {
+170.                                                                                  matrix DIFF_ALT[`n',1]= ln(TREAT[`
+> n',1]+.0001)-ln(SYNTH[`n',1]+.0001)
+171.                                                                                  matrix BASE_ALT[`n',1]= ln(TREAT[`
+> n',1]+.001)*.1
+172.                                                                         }                                          
+>      
+173.                                                                 }
+174.                                                                 matrix SSEM_ALT =DIFF_ALT' * DIFF_ALT
+175.                                                                 matrix BASE2 = BASE' * BASE
+176.                                                                 matrix BASE2_ALT = BASE_ALT' * BASE_ALT
+177.                                                                 matrix CHECK = [TREAT, SYNTH, DIFF, BASE, DIFF_ALT,
+>  BASE_ALT]
+178.                                                                 scalar SSE_ALT = SSEM_ALT[1,1]
+179.                                                                 scalar SSE_BASE = BASE2[1,1]
+180.                                                                 scalar SSE_BASE_ALT = BASE2_ALT[1,1]
+181.                                                                 scalar postRMSE_alt=sqrt(SSE_ALT/`yrspost')     
+182.                                                                 scalar fitindex=.1*postRMSE/(sqrt(SSE_BASE/`yrspost
+> '))                                                                  
+183.                                                                 scalar fitindex_alt=.1*postRMSE_alt/(sqrt(SSE_BASE_
+> ALT/6))
+184.                                                                 matrix `fitmat`j'_`outcome'' = [nullmat(`fitmat`j'_
+> `outcome'') \ fitindex]      
+185.                                                                 matrix `fit2mat`j'_`outcome'' = [nullmat(`fit2mat`j
+> '_`outcome'') \ fitindex_alt]        
+186.                                                                 matrix drop DIFF_ALT BASE_ALT SSEM_ALT BASE2 BASE2_
+> ALT CHECK 
+187.                                                                 scalar drop SSE_ALT SSE_BASE SSE_BASE_ALT postRMSE_
+> alt fitindex fitindex_alt
+188.                                                                 matrix drop DIFF TREAT SYNTH BASE SSEM
+189.                                                                 scalar drop postRMSE SSE
+190.                                                         }
+191.                                                         * end loop over outcomes
+.                                                 }                               
+192.                                                 * end quietly                                                   
+.                                         }                               
+193.                                         * end loop over each state
+.                                         * Generate names for placebos (only the first time through)
+.                                         if `j'==1 {
+194.                                                 local names ""
+195.                                                 forvalues i = 1/`Numstates' {
+196.                                                         local names `" `names' "pl`i'" "'
+197.                                                 }
+198.                                         }       
+199.                                         * Create matrix of RMSPEs 
+.                                         foreach outcome of local outvars {
+200.                                                 matrix RMSPES_`outcome'_`j' = `resmat`j'_`outcome''
+201.                                                 mat colnames RMSPES_`outcome'_`j' = "group`j'"
+202.                                                 matrix FITINDEX_`outcome'_`j' = `fitmat`j'_`outcome''
+203.                                                 mat colnames FITINDEX_`outcome'_`j' = "group`j'"
+204.                                                 matrix FITINDEXA_`outcome'_`j' = `fit2mat`j'_`outcome''
+205.                                                 mat colnames FITINDEXA_`outcome'_`j' = "group`j'"                  
+>                              
+206.                                         }
+207.                                         di "end loop `j' for `pass' `fform' training"
+208.                                         di "--"                 
+209.                                 }
+210.                                 * end loop over Predvar Sets
+.                                 * Export file of RMSPES from each loop*******
+.                                 quietly{
+211.                                         local tyr=`treatyear'-1900
+212.                                         foreach outcome of local outvars {
+213.                                                 matrix IA_`pass'_RMSPES`tyr'_`outcome'=[RMSPES_`outcome'_1, RMSPES_
+> `outcome'_2, RMSPES_`outcome'_3, RMSPES_`outcome'_4, RMSPES_`outcome'_5, RMSPES_`outcome'_6, RMSPES_`outcome'_7, RMSPE
+> S_`outcome'_8, RMSPES_`outcome'_9, RMSPES_`outcome'_10]
+214.                                                 mat rownames IA_`pass'_RMSPES`tyr'_`outcome'= `names' 
+215.                                                 matsave IA_`pass'_RMSPES`tyr'_`outcome', saving replace
+216.                                                 matrix IA_`pass'_INDEX`tyr'_`outcome'=[FITINDEX_`outcome'_1, FITIND
+> EX_`outcome'_2, FITINDEX_`outcome'_3, FITINDEX_`outcome'_4, FITINDEX_`outcome'_5, FITINDEX_`outcome'_6, FITINDEX_`outc
+> ome'_7, FITINDEX_`outcome'_8, FITINDEX_`outcome'_9, FITINDEX_`outcome'_10]
+217.                                                 mat rownames IA_`pass'_INDEX`tyr'_`outcome'= `names' 
+218.                                                 matsave IA_`pass'_INDEX`tyr'_`outcome', saving replace
+219.                                                 matrix IA_`pass'_INDEXA`tyr'_`outcome'=[FITINDEXA_`outcome'_1, FITI
+> NDEXA_`outcome'_2, FITINDEXA_`outcome'_3, FITINDEXA_`outcome'_4, FITINDEXA_`outcome'_5, FITINDEXA_`outcome'_6, FITINDE
+> XA_`outcome'_7, FITINDEXA_`outcome'_8, FITINDEXA_`outcome'_9, FITINDEXA_`outcome'_10]
+220.                                                 mat rownames IA_`pass'_INDEXA`tyr'_`outcome'= `names' 
+221.                                                 matsave IA_`pass'_INDEXA`tyr'_`outcome', saving replace
+222.                                         }
+223.                                 }
+224.                                 di " RMSPE and FIT INDEX Matrices for `pass' `fform' to `treatyear' saved"
+225.                                 di "------------------------------------------------------"
+226.                                 matrix drop _all        
+227.                         }
+228.                         * end loop over functional form
+.                 }
+229.                 * end loop over training treatyear options
+.         }
+
+--------------------------------------------------------
+Begin Training Sections for CF:
+Calibration using treatmentyears: 1994
+Functional forms include: LNPC LN PC
+---------------------------------
+Training Section for CF LNPC 
+Year 1 = 1990, Treatment Year = 1994
+-------------------------------
+
+. *************************************************
+. * Charitable Tax Credits Analysis
+. * synth_setup.do
+. * 8/28/2017, version 1
+. * Dan Teles
+. *************************************************
+. * this file contains setup for CTC synth commands
+. * it can be called from CTC_IA.do or CTC_AZ.do
+. * which, in turn, are called from CharitableTaxCredits.do
+. **************************************************
+. di "test"
+test
+
+. di "`pass'"
+CF
+
+.                                 * Define locals for cont predictor variables 
+.                                 local lagpredictors ``cont'1' ``cont'2'  ``cont'3'  ``cont'4'  ``cont'5'  ``cont'6' 
+
+.                                 local otherpredictors `INCperCAP' `pop' `progrev' `solicit' gini top1 
+
+.                                 local otherpredictors2 `otherpredictors'  ``INCperCAP'1' `pop1' ``progrev'1' ``solicit
+> '1' `gini1' `top11'  ``INCperCAP'L' `popL' ``progrev'L' ``solicit'L' `giniL' `top1L' 
+
+.                                 local C1 `lagpredictors'
+
+.                                 local C2 `cont' `otherpredictors'
+
+.                                 local C3 ``cont'1' ``cont'L' `cont' `otherpredictors2'
+
+.                                 local C4 `lagpredictors' `otherpredictors'
+
+.                                 local C5 `lagpredictors' `otherpredictors2'
+
+.                                 local C6 `otherpredictors'
+
+.                                 local C7 `otherpredictors2'
+
+.                                 local C8 `cont' `otherpredictors2'
+
+.                                 local C9 ``cont'1' ``cont'L' `cont' `otherpredictors'
+
+.                                 local C10 ``cont'1' ``cont'L' `cont' ``progrev'1' ``progrev'L' `progrev' ``solicit'1' 
+> ``solicit'L' `solicit'
+
+.                                 * Define locals for SCM predictor variables for NUM
+.                                 local number="`num'"
+
+.                                 local lagpredictors_num ``num'1' ``num'2'  ``num'3'  ``num'4'  ``num'5'  ``num'6' 
+
+.                                 local N1 `lagpredictors_num'
+
+.                                 local N2 `num' `otherpredictors'
+
+.                                 local N3 ``num'1' ``num'L' `num' `otherpredictors2'
+
+.                                 local N4 `lagpredictors_num' `otherpredictors'
+
+.                                 local N5 `lagpredictors_num' `otherpredictors2'
+
+.                                 local N6 `otherpredictors'
+
+.                                 local N7 `otherpredictors2'
+
+.                                 local N8 `num' `otherpredictors2'
+
+.                                 local N9 ``num'1' ``num'L' `num' `otherpredictors'
+
+.                                 local N10 ``num'1' ``num'L' `num' ``solicit'1' ``solicit'L' `solicit' ``progrev'1' ``p
+> rogrev'L' `progrev' 
+
+.                                 * Define locals for solicit predictor variables
+.                                 local lagpredictors_fund ``solicit'1' ``solicit'2'  ``solicit'3'  ``solicit'4'  ``soli
+> cit'5'  ``solicit'6' 
+
+.                                 local otherpredictors_fund `INCperCAP' `pop' `progrev'  gini top1
+
+.                                 local otherpredictors2_fund `otherpredictors' ``INCperCAP'1' `pop1' ``progrev'1' `gini
+> 1' `top11'  ``INCperCAP'L' `popL' ``progrev'L' `giniL' `top1L' 
+
+.                                 local S1 `lagpredictors_fund'
+
+.                                 local S2 `solicit' `otherpredictors_fund'
+
+.                                 local S3 ``solicit'1' ``solicit'L' `solicit' `otherpredictors2_fund'
+
+.                                 local S4 `lagpredictors_fund' `otherpredictors_fund'
+
+.                                 local S5 `lagpredictors_fund' `otherpredictors2_fund'
+
+.                                 local S6 `otherpredictors_fund'
+
+.                                 local S7 `otherpredictors2_fund'
+
+.                                 local S8 `solicit' `otherpredictors2_fund'
+
+.                                 local S9 ``solicit'1' ``solicit'L' `solicit' `otherpredictors_fund'
+
+.                                 local S10 ``solicit'1' ``solicit'L' `solicit' ``progrev'1' ``progrev'L' `progrev' 
+
+.                                 
+.         di "`S10'"                      
+lnsolicitPC(1990) lnsolicitPC(1993) lnsolicitPC lnprogrevPC(1990) lnprogrevPC(1993) lnprogrevPC
+
+.                                 
+. CF
+lnsolicitPC(1990) lnsolicitPC(1993) lnsolicitPC lnprogrevPC(1990) lnprogrevPC(1993) lnprogrevPC
+command blurg is unrecognized
+r(199);
+.         * end loop over each analysis
+. }
+r(199);
+
+end of do-file
+r(199);
+r(199);
+
+end of do-file
+
+r(199);
+
+. do "D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits\ctcs_dofiles\CharitableTaxCredits.do"
+
+. *************************************************
+. * Charitable Tax Credits Analysis
+. * CharitableTaxCredits.do
+. * 8/18/2017, version 2.1
+. * Dan Teles
+. *************************************************
+. * This is the main file for the CTC analysis
+. * It calls the other .do files and does program setup
+. *************************************************
+. * Program Setup
+. *************************************************
+. version 14              // Set Version number for backward compatibility
+
+. set more off            // Disable partitioned output
+
+. clear all               // Start with a clean slate
+
+. set linesize 120        // Line size limit to make output more readable
+
+. macro drop _all         // clear all macros
+
+. capture log close       // Close existing log files
