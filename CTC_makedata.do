@@ -1,7 +1,7 @@
 *************************************************
 * Charitable Tax Credits Analysis
 * CTC_makedata.do
-* 8/23/2017, version 1
+* 8/29/2017, version 1
 * Dan Teles
 *************************************************
 * this file creates datasets 
@@ -11,8 +11,7 @@
 **************************************************
 local projectdir="D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits"
 local controldir "D:\Users\dteles\Box Sync\DTeles\MyControls"
-local datadir="D:\Users\dteles\Documents\CharitableTaxCredits\data"
-local output="`projectdir'\output"
+local datadir="D:NCCSdata"
 local project="CharitableTaxCredits"
 **************************************************
 * Locals to define which sections to run

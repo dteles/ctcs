@@ -10,7 +10,7 @@
 * Directories
 **************************************************
 local projectdir="D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits"
-local datadir="D:\Users\dteles\Documents\CharitableTaxCredits\data"
+local datadir="D:NCCSdata"
 local output="`projectdir'\output"
 local project="IA"
 **************************************************
