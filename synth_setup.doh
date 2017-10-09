@@ -5,7 +5,8 @@
 * Dan Teles
 *************************************************
 * this file contains setup for CTC synth commands
-* it can be called from CTC_IA.do or CTC_AZ.do
+* it can be called from SCManalysis.doh or SCMtraining.doh
+* which, in turn, are called from CTC_IA.do or CTC_AZ.do
 * which, in turn, are called from CharitableTaxCredits.do
 **************************************************
 * define locals for variables of interest
@@ -45,7 +46,7 @@ foreach predvar of local predvarlist {
 	local `predvar'L `predvar'(`lastpreyear')
 }
 * Define locals for robustness check excluding population
-if "`pass'"=="`prime_agg'xp" {
+if "`pass'"=="`set'xp" {
 	local pop = ""
 	local pop1 = ""
 	local popL = ""
@@ -58,8 +59,8 @@ else {
 }	// populaiton variable always in log form
 * Define local for which outcome variables are of interest
 local outvars `cont' `num'  //Contributions and Number of Nonprofits
-if "`pass'"==`prime_agg' {
-local outvars `cont' `num' `solicit' 
+if "`pass'"=="`set'" & "`robust'"=="yes" {
+	local outvars `cont' `num' `solicit' 
 }
 * Define locals for cont predictor variables 
 local lagpredictors ``cont'1' ``cont'2'  ``cont'3'  ``cont'4'  ``cont'5'  ``cont'6' 
@@ -106,5 +107,4 @@ local S10 ``solicit'1' ``solicit'L' `solicit' ``progrev'1' ``progrev'L' `progrev
 di "`fform' metrics are: `outvars'"
 di "Pretreatment Period runs `year1' to `lastpreyear'.  Posttreatment Period runs `treatyear' to `lastyear'"
 di "--------------------------------------"		
-
 * end dofile				

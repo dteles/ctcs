@@ -1,7 +1,7 @@
 *************************************************
 * Charitable Tax Credits Analysis
 * CTC_makedata.do
-* 8/29/2017, version 1
+* 9/1/2017, version 1
 * Dan Teles
 *************************************************
 * this file creates datasets 
@@ -11,24 +11,25 @@
 **************************************************
 local projectdir="D:\Users\dteles\Box Sync\DTeles\CharitableTaxCredits"
 local controldir "D:\Users\dteles\Box Sync\DTeles\MyControls"
-local datadir="D:NCCSdata"
+local datadir="D:\NCCSdata"
 local project="CharitableTaxCredits"
 **************************************************
 * Locals to define which sections to run
 **************************************************
-local mergeNCCS="no"
+local mergeNCCS="yes"
+local mergeNCCS2="no"
 local makecntrl="no"
-local masterfile="yes"
-local statefiles="yes"
-local CF="yes"
+local masterfile="no"
+local statefiles="no"
+local CF="no"
 local subsector="yes"
-local diffndiff="yes"
+local diffndiff="no"
 **************************************************
 * Locals to define which subsets to create
 **************************************************
 local BIG `" "ALL" "PUB" "ST" "'
-local CFSPILL `" "ALLmCF" "PUBmCF" "STmCF" "'
-local DDfiles	`" "DD" "DDD" "'
+*local CFSPILL `" "ALLmCF" "PUBmCF" "STmCF" "'
+*local DDfiles	`" "DD" "DDD" "'
 **************************************************
 * Save Time-stamped copy of this .do file
 **************************************************
@@ -108,7 +109,7 @@ if "`mergeNCCS'"=="yes" {
 	*******************************************
 	*Create 2012 and 2013 temp files
 	*******************************************
-	foreach num of numlist 2012/2013 {
+	foreach num of numlist 2012 {
 		cd "`datadir'\NCCSextracts"	
 		use CorePC`num', replace
 		keep ein fisyr name-zip5 cont progrev invinc totrev ass_boy-liab_eoy lessdirf fundfees lessdirf lessdirg rentexp compens
@@ -127,7 +128,7 @@ if "`mergeNCCS'"=="yes" {
 	*Merge Temp files into a Master file and Clean Data
 	*********************************************
 	use CorePC1989_temp, replace
-	foreach num of numlist 1990/2013 {
+	foreach num of numlist 1990/2012 {
 		cd "`datadir'\temp"
 		append using CorePC`num'_temp
 	}
@@ -143,42 +144,20 @@ if "`mergeNCCS'"=="yes" {
 	count
 	* Keeps only the last filing***
 	keep if N==n
-	drop N n
 	count
-	* clean string data
-	foreach var of varlist name state city {
-		replace `var'=upper(`var')
-		replace `var' = subinstr(`var', "&", " AND ",.)
-		replace `var' = subinstr(`var', "-", " ",.)
-		replace `var' = subinstr(`var', "/", " ",.)
-		replace `var' = subinstr(`var', ",", " ",.)
-		replace `var' = subinstr(`var', "INCORPORATED", "INC.",.)
-		replace `var' = subinstr(`var', "CORPORRN", "CORP.",.)
-		replace `var' = subinstr(`var', "  ", " ",.)
-		replace `var' = subinstr(`var', "  ", " ",.)
-		egen `var'2=sieve(`var'), keep(alphabetic numeric space)
-		replace `var'=`var'2
-		drop `var'2
-		replace `var'=trim(`var')
-		replace `var'=trim(`var')
-	}
-	* carryforward state if it is missing
-	sort ein fisyr
-	bysort ein (fisyr): carryforward state if state=="", replace
-	bysort ein (fisyr): carryforward state if state=="", replace
-	bysort ein (fisyr): carryforward state if state=="", replace
-	gsort ein - fisyr
-	bysort ein (fisyr): carryforward state if state=="", replace 
-	bysort ein (fisyr): carryforward state if state=="", replace
-	di "Checking to make sure no state identifiers are missing"
-	di "Number missing:"
-	count if state==""
-	sort ein fisyr	
-	drop if state==""
 	***Save Combined Project File**********
 	cd "`datadir'"
 	save CombinedNCCS, replace
 }
+if "`mergeNCCS2'"=="yes"{
+	cd "`datadir'\NCCSextracts"
+	import delimited D:\NCCSdata\NCCSextracts\nccs.corePcFyTrend201508.csv
+	***Save Combined Project File**********
+	cd "`datadir'"
+	save CombinedNCCS, replace
+}
+
+
 ************************************************
 * State-by-year Controls Files
 ************************************************
@@ -250,6 +229,39 @@ if "`masterfile'"=="yes" {
 	clear all
 	cd "`datadir'"
 	use CombinedNCCS
+	* clean string data
+	foreach var of varlist name state city {
+		replace `var'=upper(`var')
+		replace `var' = subinstr(`var', "&", " AND ",.)
+		replace `var' = subinstr(`var', "-", " ",.)
+		replace `var' = subinstr(`var', "/", " ",.)
+		replace `var' = subinstr(`var', ",", " ",.)
+		replace `var' = subinstr(`var', "INCORPORATED", "INC.",.)
+		replace `var' = subinstr(`var', "CORPORRN", "CORP.",.)
+		replace `var' = subinstr(`var', "  ", " ",.)
+		replace `var' = subinstr(`var', "  ", " ",.)
+		egen `var'2=sieve(`var'), keep(alphabetic numeric space)
+		replace `var'=`var'2
+		drop `var'2
+		replace `var'=trim(`var')
+		replace `var'=trim(`var')
+	}
+	* rename fisyr year
+	* carryforward state if it is missing
+	sort ein fisyr
+	bysort ein: carryforward state if state=="", replace
+	by ein: carryforward state if state=="", replace
+	by ein: carryforward state if state=="", replace
+	gsort ein - fisyr
+	by ein : carryforward state if state=="", replace 
+	by ein: carryforward state if state=="", replace
+	di "Checking to make sure no state identifiers are missing"
+	di "Number missing:"
+	count if state==""
+	sort ein fisyr	
+	rename fisyr year
+	drop N n
+	count
 	* Create "MAJOR" classification
 	gen MAJOR=.
 	replace MAJOR = 1 if ntee1=="A"
@@ -266,11 +278,13 @@ if "`masterfile'"=="yes" {
 	}
 	replace MAJOR=7 if ntee1=="X"
 	replace MAJOR=8 if ntee1=="Y"
-	replace MAJOR=10 if ntee1=="Z"	
+	replace MAJOR=10 if ntee1=="Z"		
 	* Merge in Controls
-	rename fisyr year
 	merge m:1 state year using allcontrols
+	keep if _merge==3
+	sort _merge ein
 	drop _merge
+	count
 	* Inflate to 2012 Dollars
 	qui sum CPIU if year==2012
 	local cpi83in2012 = r(max)
@@ -280,15 +294,69 @@ if "`masterfile'"=="yes" {
 	}
 	qui foreach var of varlist cont-compens {
 		replace `var'=`var'*`cpi83in2012'/CPIU
-	}
+	} 
+
 	* generate OverHead Variable
 	replace rentexp=0 if rentexp==.
 	replace compens=0 if compens==.
 	gen overhead = rentexp + compens	
 	* keep only states and DC
-	drop if FIPS==.
+	*drop if FIPS==.
+		/*  OLD CONTROLS 
+		****Bring in Controls****
+		qui cd "`datadir'"
+		***rename state and year variables for merge
+			rename state AB
+		**Merge in controls***
+		di "Merging NCCS Data with Control datasets"
+		cd "D:\OLDCTC\data\"
+		*rename fisyr year
+		merge m:1 AB year using StateLevelDemographicControls
+			keep if _merge==3
+			drop _merge
+			sum
+		merge m:1 AB year using StateLevelUnemployment
+			keep if _merge==3
+			drop _merge	
+			sum
+		merge m:1 FIPS year using CensusOfGovernments_adjusted
+			keep if _merge==3
+			drop _merge
+		rename FIPS fips
+		merge m:1 fips year using SEERpopulation
+			rename fips FIPS
+			keep if _merge==3
+			drop _merge
+			sum
+		**Keep only SEER population estimate
+			replace POP=pop
+			drop pop totalpop
+			sum
+		****Bring in Price Index and Convert to Real 2012 Dollars****
+		**Merge in CPI-U (1982-1984 base)***	
+		merge m:1 year using cpi83_80_to_2013
+			keep if _merge==3
+			drop _merge
+			sum
+		*****inflate variables to 2012 Dollars****************
+		qui sum cpi83 if year==2012
+		local cpi83in2012 = r(max)
+		local test = r(min)
+		if `cpi83in2012'!=`test' {
+			error
+		}
+		foreach var of varlist cont-compens {
+			replace `var'=`var'*`cpi83in2012'/cpi83
+		}
+		****generate OverHead Variable*****
+		replace rentexp=0 if rentexp==.
+		replace compens=0 if compens==.
+		gen overhead = rentexp + compens	
+		sum	
+		*/
 	* save masterfile
 	cd "`datadir'"
+	count
 	save NonprofitsMaster, replace
 }	
 *********************************************
@@ -304,16 +372,22 @@ if "`statefiles'"=="yes" {
 	gen nonprofits=1
 	***Collapse to State by NCCS by Year	
 	sort state nteecc ein year
-	order state nteecc ntee1 MAJOR
+	*order state nteecc ntee1 MAJOR
 	sum
+	order state nteecc year 
+	*collapse (first) AB MAJOR-cpi83 (sum) cont-compens overhead nonprofits, by(state nteecc year)	
 	collapse (first) MAJOR ntee1 FIPS-CPIU (sum) cont-compens overhead nonprofits, by(state nteecc year)	
+	*collapse (first) MAJOR ntee1 (sum) cont-compens nonprofits, by(state nteecc year)	
 	****Save State-by-NTEECC File****
 	cd "`datadir'"
 	save NCCS_ntee_state_year, replace	
 	sum
 	***Collapse to State by Year
 	sort state year nteecc 
-	collapse (first) MAJOR ntee1 FIPS-CPIU (sum) cont-compens overhead nonprofits, by(state year)
+	order state year
+	*collapse (first) AB MAJOR-cpi83 (sum) cont-compens overhead nonprofits, by(state year)
+	collapse (first) ntee1 FIPS-CPIU (sum) cont-compens overhead nonprofits, by(state year)
+	*collapse (first) ntee1 (sum) cont-compens nonprofits, by(state year)
 	****Save State Aggregate File****
 	cd "`datadir'"
 	save NCCS_state_year, replace	
@@ -326,11 +400,12 @@ if "`CF'"=="yes" {
 	clear all
 	cd "`datadir'"
 	use NonprofitsMaster
-	**Gen Number Variable
+	/* *Gen Number Variable
 	gen nonprofits=1
-	preserve
+	*/
 	* keep only community foundations
-	keep if nteecc=="T31"
+	preserve		
+	keep if nteecc=="T31"	
 	sort ein year
 	save NCCS_foundations, replace
 	restore
@@ -370,54 +445,61 @@ if "`subsector'"=="yes" {
 				di "NCCS_mCF loaded"
 			}
 		}
-		* Reduce to Public and Societal Benefit Organizations
-		if  "`set'"=="PUBmCF" | "`set'"=="PUB" {
-			keep if MAJOR==6	
-		}
-		* Reduce to ntee1 S&T Organizations
-		if "`set'"=="STmCF" | "`set'"=="ST" {
-			keep if ntee1=="S" | ntee1=="T"
-		}
-		* Drop CBCBF (outlier) from main CF file 
-		if "`set'"=="CF" {
+		summarize
+		capture rename pop POP
+		capture drop N-n
+		*rename year fisyr
+		****drop outlier*****
+		if "`set'"=="CF"{
 			drop if ein==421504843
 		}
-		sort state year
-		order state year MAJOR ntee1
-		collapse (first) MAJOR ntee1 FIPS-CPIU (sum) cont-compens overhead nonprofits, by(state year)
-		* generate additional variables and functional forms
-		gen num = nonprofits
-		label var num "Number of Nonprofits"
-		gen lnnum = ln(num)
-		gen numPC = num * 1000000 / pop
-		label var numPC "Nonprofits per Million people" 
-		gen lnnumPC = ln(num * 1000000 / pop)
+		if "`set'"=="CF" |  "`set'"=="CFwo" {
+			gen nonprofits=1
+			sum
+			******collapse to state level	
+			order state year
+			*collapse (first) AB MAJOR-cpi83 (sum) cont-compens overhead nonprofits, by(state year)
+			collapse (first)  MAJOR-CPIU (sum) cont-compens overhead nonprofits, by(state year)
+			*collapse (sum) cont-compens nonprofits (first) nteecc, by(state year)
+			sum
+		}
+		**Create Per Capita and Log Form Measures***
+		if "`set'"=="CF" | "`set'"=="CFwo" {
+			gen num=nonprofits*1000000
+			gen lnnum = ln(num)
+			gen numPC = num /POP
+			gen lnnumPC = ln(num/POP)
+			sum num lnnum numPC lnnumPC
+		}
+		if "`comp'"=="yes" {
+			sum
+			gen num=nonprofits*1000000
+			gen lnnum = ln(num)
+			gen numPC = num /POP
+			gen lnnumPC = ln(num/POP)
+			sum num lnnum numPC lnnumPC
+		}
 		foreach var of varlist cont progrev totrev solicit overhead own_rev dir_exp {
-			gen `var'PC=`var'/pop
-			gen ln`var'PC=ln(`var'/pop)
+			gen `var'PC=`var'/POP
+			gen ln`var'PC=ln(`var'/POP)
 			gen ln`var'=ln(`var') 
 			sum `var'PC ln`var'PC ln`var'
-		}		
-		foreach var of varlist cont progrev totrev solicit overhead own_rev dir_exp {
-			replace ln`var'PC=ln((`var'+.01)/pop) if `var'==0
+		}
+		foreach var of varlist progrev totrev solicit overhead own_rev dir_exp {
+			replace ln`var'PC=ln((`var'+.01)/POP) if `var'==0
 			replace ln`var'= ln(`var'+.01)
 			sum `var'PC ln`var'PC
-		}		
-		gen POP_million=pop / 1000000
-		gen lnPOP=ln(pop)
-		gen lnINCperCAP=ln(INCperCAP)
-		sum INCperCAP lnINCperCAP POP_million lnPOP		
-		rename state AB
-		* In CF File: rename "nonprofits" "foundations"
-		if "`set'"=="CF" | "`set'"=="CFwo" {
-			rename nonprofits foundations
 		}
-		summarize
-		* save sector level file
+		gen POP_million=POP/1000000
+		gen lnPOP=ln(POP)
+		gen lnINCperCAP=ln(INCperCAP)
+		sum INCperCAP lnINCperCAP POP_million lnPOP
+		sum	
+		*save state foundations file
 		cd "`datadir'"
-		save `set', replace		
+		rename state AB
+		save `set', replace
 	}
-	* end creation of sector-level files
 }
 ************************************************
 * Save Files for Diff-in-Diff

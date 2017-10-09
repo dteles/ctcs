@@ -27,8 +27,8 @@ local project="CharitableTaxCredits"
 **************************************************
 * Locals to define which sections to run
 **************************************************
-local makedata "no" 
-local Iowa "yes"
+local makedata "yes" 
+local Iowa "no"
 local Arizona "no"
 **************************************************
 * Define Directory
